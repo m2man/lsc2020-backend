@@ -51,7 +51,7 @@ def search_es(ES, index, request, percent_thres=0.9, max_len=10):
 
     if numb_result != 0:
         score = [d["_score"] for d in res["hits"]["hits"]]  # Score of all result (higher mean better)
-        id_result = [d["_source"] for d in res["hits"]["hits"]]  # List all id images in the result
+        id_result = [[d["_source"], d["_score"]] for d in res["hits"]["hits"]]  # List all id images in the result
 
         score_np = np.asarray(score)
 

@@ -80,6 +80,16 @@ WSGI_APPLICATION = 'project.wsgi.application'
 DATABASES = {'default': {'ENGINE': 'djongo',
                          'NAME': 'test',
                          'HOST': 'mongodb+srv://alie:mrF6V4p32aOEayJX@user1-ielbg.mongodb.net/test?retryWrites=true&w=majority',}}
+#
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'polls',
+#         'USER': '<your-database-user>',
+#         'PASSWORD': '<your-database-password>',
+#         'PORT': '3306',
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators

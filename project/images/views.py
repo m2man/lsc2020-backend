@@ -4,7 +4,7 @@ import json
 from django.views.decorators.csrf import csrf_exempt
 import pickle
 from elasticsearch import Elasticsearch
-from images.query import ESearch
+from images.query import ES_autocomplete, gps_search, es_bow
 
 # Directory to images
 Synonym_glove_all_file = "static/List_synonym_glove_all.pickle"
@@ -15,17 +15,10 @@ es = Elasticsearch([{"host": "localhost", "port": 9200}])
 
 @csrf_exempt
 def images(request):
-    # Load MongoDB
-    # client = MongoClient()
-    # # db = client.user1
-    # client = MongoClient("mongodb+srv://alie:mrF6V4p32aOEayJX@user1-ielbg.mongodb.net/test?retryWrites=true&w=majority").user1
-    # db = client.test
-    # images = db.images
-
     # Get message
     message = json.loads(request.body.decode('utf-8'))
     # Calculations
-    queryset = ESearch(es, synonym, message['query'])
+    queryset = es_bow(message['query'])
     response = {'results': queryset,
                 'error': None}
 
@@ -37,3 +30,39 @@ def images(request):
     response["Access-Control-Allow-Headers"] = "X-Requested-With, Content-Type"
     return response
 
+@csrf_exempt
+def autocomplete(request):
+    # Get message
+    message = json.loads(request.body.decode('utf-8'))
+    # Calculations
+    queryset, not_included_query = ES_autocomplete(es, message['query'])
+
+    response = {'results': queryset,
+                'not_included_query': not_included_query,
+                'error': None}
+
+    # JSONize
+    response = JsonResponse(response)
+    response["Access-Control-Allow-Origin"] = "*"
+    response["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+    response["Access-Control-Allow-Credentials"] = "true"
+    response["Access-Control-Allow-Headers"] = "X-Requested-With, Content-Type"
+    return response
+
+@csrf_exempt
+def gpssearch(request):
+    # Get message
+    message = json.loads(request.body.decode('utf-8'))
+    print(message.keys())
+    # Calculations
+    images = message["images"] if "images" in message else []
+    queryset = gps_search(es, message['query'], images)
+    response = {'results': queryset,
+                'error': None}
+    # JSONize
+    response = JsonResponse(response)
+    response["Access-Control-Allow-Origin"] = "*"
+    response["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+    response["Access-Control-Allow-Credentials"] = "true"
+    response["Access-Control-Allow-Headers"] = "X-Requested-With, Content-Type"
+    return response

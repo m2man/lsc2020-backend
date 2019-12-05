@@ -1,30 +1,64 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Oct  8 00:33:34 2019
-Create Elasticsearch database locally and add document from combined descriptione json to the database
-Then perform simple query
-@author: duyphd
-"""
+'''
+This is ES set up for bow embedding and text search for LSC
+'''
 
-import json
-from elasticsearch import Elasticsearch
 from tqdm import tqdm
-# import time
-# import MyLibrary as mylib
+import elasticsearch
+from elasticsearch import Elasticsearch
+import json
+from pathlib import Path
 import pickle
-# from PIL import Image
+from nltk.stem import PorterStemmer
+from nltk.corpus import stopwords
 from datetime import datetime
 import calendar
+import random
+import numpy as np
+from nltk.tokenize import word_tokenize
+import time
 
-Synonym_glove_all_file = "List_synonym_glove_all.pickle"
-with open(Synonym_glove_all_file, "rb") as f:
-    List_synonym = pickle.load(f)
+stop_words = stopwords.words('english')
+stop_words += [',', '.']
+ps = PorterStemmer()
+Data_path = './data'
 
-####### Connect to the elastic cluster --> run elasticsearch first #########
+##### Load Synonym #####
+Synonym_file_stemmed = Data_path + '/List_synonym_glove_all_stemmed.pickle'
+with open(Synonym_file_stemmed, 'rb') as f:
+    list_synonym_stemmed = pickle.load(f)
+
+Synonym_file = Data_path + '/List_synonym_glove_all.pickle'
+with open(Synonym_file, 'rb') as f:
+    list_synonym = pickle.load(f)
+
+##### Load description #####
+description = json.load(open("data/u1_full_info.json"))
+
+##### Load extended dictionary #### --> Also feature vector format
+with open(Data_path + '/bow_my_dictionary.pickle', "rb") as f:
+    my_dictionary = pickle.load(f)
+
+numb_ft = len(my_dictionary)
+print("Number of feature: " + str(numb_ft))
+
+##### Load embedded bow for images #####
+with open(Data_path + '/bow_feature_all.pickle', "rb") as f:
+    bow_ft_images = pickle.load(f)
+
+##### Load IDF #####
+with open(Data_path + '/bow_idf.pickle', "rb") as f:
+    my_idf = pickle.load(f)
+
+##### Setting up ES #####
 es = Elasticsearch([{"host": "localhost", "port": 9200}])
 
-interest_index = "lsc2020"
+interest_index = "lsc2019_combined_text_bow"
+
+print("Deleting index: " + interest_index)
+try:
+    es.indices.delete(index=interest_index)
+except Exception:
+    print("Do not have index to delete: " + interest_index)
 
 ########### Add analyzer for the client ##########
 es.indices.create(
@@ -99,6 +133,17 @@ es.indices.create(
                             "english_possessive_stemmer",
                             "english_stemmer"
                         ]
+                    },
+                    "analyzer_gps_description": {
+                        "type": "custom",
+                        "tokenizer": "standard",  # remove 'and' and ','
+                        "filter": [
+                            "lowercase",
+                            "english_stop",
+                            "edge_ngram_filter",
+                            "english_possessive_stemmer",
+                            "english_stemmer"
+                        ]
                     }
                 },
                 "tokenizer": {
@@ -152,24 +197,12 @@ es.indices.create(
         },
         "mappings": {
             "properties": {
+                "id":  {
+                    "type": "keyword"
+                },
                 "scene": {
                     "type": "text",
                     "analyzer": "analyzer_tfidf",
-                    "search_analyzer": "analyzer_search"
-                },
-                "object_tfidf": {
-                    "type": "text",
-                    "analyzer": "analyzer_tfidf",
-                    "search_analyzer": "analyzer_search"
-                },
-                "object_yolo_term": {
-                    "type": "text",
-                    "analyzer": "analyzer_object_yolo_term",
-                    "search_analyzer": "analyzer_object_yolo_term"
-                },
-                "object_yolo_term_clip": {
-                    "type": "text",
-                    "analyzer": "analyzer_object_yolo_term_clip",
                     "search_analyzer": "analyzer_search"
                 },
                 "description": {
@@ -182,75 +215,42 @@ es.indices.create(
                     "analyzer": "analyzer_object_yolo_term_clip",
                     "search_analyzer": "analyzer_object_yolo_term_clip_search"
                 },
-                "description_clip_tfidf": {
-                    "type": "text",
-                    "analyzer": "analyzer_tfidf",
-                    "search_analyzer": "analyzer_search"
-                },
                 "weekday": {
-                    "type": "text"
+                    "type": "text",
+                    "analyzer": "analyzer_gps_description",
+                    "search_analyzer": "analyzer_gps_description"
+                },
+                "address": {
+                    "type": "text",
+                    "analyzer": "analyzer_gps_description",
+                    "search_analyzer": "analyzer_gps_description"
+                },
+                "description_embedded": {
+                    "type": "dense_vector",
+                    "dims": numb_ft
+                },
+                "location": {
+                    "type": "geo_point"
+                },
+                "time": {
+                    "type": "date",
+                    "format": "yyyy/MM/dd HH:mm:00+00"
                 }
             }
         }
-    }  # ,
-    # Will ignore 400 errors, remove to ensure you"re prompted
-    # ignore=400
+    }
 )
 
-####### Add data to es ########
-File = "description.json"
-with open(File) as json_file:
-    description = json.load(json_file)
+# Get id images, both json and embedded file should have the same id list
+list_id_images = list(description.keys())
 
-print("Uploading data to the server ...")
-
-numb_of_image_scan = 0
-for id_image_json, content_image_json in tqdm(description.items()):
-    numb_of_image_scan += 1
-
-    id_image = id_image_json
-    print(id_image)
-    image_date = id_image[:8]  # Extract date information
-    image_datetime = datetime.strptime(image_date, '%Y%m%d')  # Convert to datetime type
-    image_weekday = calendar.day_name[image_datetime.weekday()]  # Monday, Tuesday, ...
-
-    scene_image = content_image_json["scene_image"]
-    object_image = content_image_json["object_image"]
-    object_tfidf_image = content_image_json["object_format_image"]
-
-    document = {
-        "id": id_image,
-        "scene": scene_image,
-        "description": scene_image + ", " + object_image,
-        "description_clip": scene_image + ", " + object_image,
-        "weekday": image_weekday
-    }
-
-    # Store document in Elasticsearch
-    res = es.index(index=interest_index, doc_type="_doc", id=numb_of_image_scan, body=document)
-
-########### Summary ##############
-print("==========\nTotal number of document:")
-res = es.search(index=interest_index, body={"query": {"match_all": {}}}, size=9999)  # Simple list all document
-print(len(res["hits"]["hits"]))  # Number of result
-
-########### Simple Query ##############
-# # Directory to images
-# Images_Path = "/Volumes/GoogleDrive/My Drive/LSC-test/LSC_DATA/"
-#
-# input_query = "2 people, cafe, glass, dish"
-#
-# start_time = time.time()
-# query_request_txt, query_request_json = mylib.generate_es_query_dismax_querystringquery(q = input_query,
-#                                                                                         list_synonym = List_synonym,
-#                                                                                         max_change = 1,
-#                                                                                         tie_breaker = 0.7)
-# request_result ,id_result = mylib.search_es(es, index = "lsc2019", request = query_request_json,
-#                                       percent_thres = 0.5, max_len = 20)
-# end_time = time.time()
-# print("Search Time: " + str(end_time - start_time) + " seconds.")
-#
-#
-# # Show images
-# id_image_path = mylib.add_folder_to_id_images(id_result)
-# mylib.show_result(image_path = Images_Path, id_image = id_image_path)
+for id, (image, desc) in tqdm(enumerate(description.items()), total=len(description)):
+    if es.exists(interest_index, id):
+        continue
+    desc.update({"description_embedded": bow_ft_images[image].tolist(),
+                 "location": {"lon": round(desc["location"][1], 5),
+                              "lat": round(desc["location"][0], 5)} if desc["location"] else None})
+    res = es.index(index=interest_index,
+                   doc_type="_doc",
+                   id=id,
+                   body=desc)
