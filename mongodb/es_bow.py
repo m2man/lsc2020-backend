@@ -138,13 +138,13 @@ es.indices.create(
                         "type": "custom",
                         "tokenizer": "standard",  # remove 'and' and ','
                         "filter": [
+                            "address_shingle",
                             "lowercase",
                             "english_stop",
-                            "edge_ngram_filter",
                             "english_possessive_stemmer",
                             "english_stemmer"
                         ]
-                    }
+                    },
                 },
                 "tokenizer": {
                     "tokenizer_tfidf": {
@@ -162,6 +162,12 @@ es.indices.create(
                     }
                 },
                 "filter": {
+                    "address_shingle": {
+                            "type": "shingle",
+                            "max_shingle_size": 3,
+                            "output_unigrams": False,
+                            "output_unigrams_if_no_shingles": False
+                    },
                     "english_stop": {
                         "type": "stop",
                         "stopwords": "_english_"
@@ -235,6 +241,12 @@ es.indices.create(
                 "time": {
                     "type": "date",
                     "format": "yyyy/MM/dd HH:mm:00+00"
+                },
+                "category_description1": {
+                    "type": "keyword"
+                },
+                "category_description2": {
+                    "type": "keyword"
                 }
             }
         }

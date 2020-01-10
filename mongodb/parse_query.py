@@ -10,7 +10,7 @@ c.uses24 = True
 cal = pdt.Calendar(c)
 now = datetime.now()
 
-text = "waiting for my friend at The Helix before 5pm after May 17"
+text = "waiting for my friend at The Helix before 5pm after May 17 "
 
 def get_time_query(text):
     doc = nlp(text)

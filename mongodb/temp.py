@@ -10,33 +10,33 @@ es.indices.put_mapping(index=interest_index, body={
   }
 })
 
-# es.indices.close(interest_index)
-# es.indices.put_settings(index=interest_index, body={
-#     "analysis": {
-#         "filter": {
-#             "address_shingle": {
-#                 "type": "shingle",
-#                 "max_shingle_size": 3,
-#                 "output_unigrams": False,
-#                 "output_unigrams_if_no_shingles": False
-#             }
-#         },
-#         "analyzer": {
-#             "analyzer_gps_description": {
-#                 "type": "custom",
-#                 "tokenizer": "standard",  # remove 'and' and ','
-#                 "filter": [
-#                     "address_shingle",
-#                     "lowercase",
-#                     "english_stop",
-#                     "english_possessive_stemmer",
-#                     "english_stemmer"
-#                 ]
-#             }
-#         }
-#     }
-# })
-# es.indices.open(interest_index)
+es.indices.close(interest_index)
+es.indices.put_settings(index=interest_index, body={
+    "analysis": {
+        "filter": {
+            "address_shingle": {
+                "type": "shingle",
+                "max_shingle_size": 3,
+                "output_unigrams": False,
+                "output_unigrams_if_no_shingles": False
+            }
+        },
+        "analyzer": {
+            "analyzer_gps_description": {
+                "type": "custom",
+                "tokenizer": "standard",  # remove 'and' and ','
+                "filter": [
+                    "address_shingle",
+                    "lowercase",
+                    "english_stop",
+                    "english_possessive_stemmer",
+                    "english_stemmer"
+                ]
+            }
+        }
+    }
+})
+es.indices.open(interest_index)
 
 # import json
 # import textdistance

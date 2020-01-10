@@ -8,10 +8,8 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.corpus import wordnet
 from nltk import pos_tag
-import random
-import time
-from datetime import datetime
-import parsedatetime as pdt  # $ pip install parsedatetime
+from nltk import bigrams
+import parsedatetime as pdt
 import spacy
 
 nlp = spacy.load("en_core_web_sm")
@@ -67,6 +65,266 @@ def get_time_query(text):
                 query.append(f"doc['time'].value.getDayOfMonth() == {parsed.day}")
 
     return " && ".join(query)
+
+
+# GROUP 1
+group1_text = """person: person
+vehicle: bicycle, motorcycle, car, bus, train, truck, airplane, boat
+outdoor: traffic light, fire hydrant, stop sign, parking meter, bench
+animal: dog, horse, cow, sheep, giraffe, zebra, bear, bird, cat, dog, horse, sheep, cow, elephant, bear
+accessory: backpack, umbrella, handbag, tie, suitcase, pen, glove
+sport: frisbee, skis, snowboard, sports ball, kite, baseball bat, baseball glove, skateboard, surfboard, tennis racket
+kitchen: bottle, wine glass, cup, fork, knife, spoon, bowl
+food: banana, apple, sandwich, orange, broccoli, carrot, hot dog, pizza, donut, cake, hamburger
+furniture: chair, couch, potted plant, bed, dining table, toilet
+electronic: tv, laptop, mouse, remote, keyboard, cell phone
+appliance: microwave, oven, toaster, sink, refrigerator
+indoor: book, clock, vase, scissors, teddy bear, hair drier, toothbrush"""
+categories_1 = {}
+for line in group1_text.split("\n"):
+    category, words = line.split(': ')
+    words = words.split(', ')
+    categories_1[category] = set(words + [category])
+
+# GROUP 2:
+group2_text = """person: person
+bicycle: bicycle, motorcycle
+car: car
+bus: bus, train, truck
+airplane
+boat
+traffic light
+stop sign
+bench
+outdoor: fire hydrant, parking meter
+dog: dog, horse
+animal: cow, sheep, giraffe, zebra, bear, bird, cat, elephant
+backpack: backpack, handbag
+umbrella
+tie
+suitcase
+pen: baseball bat
+glove
+sport: frisbee, skis, snowboard, sports ball, kite, baseball glove, skateboard, surfboard, tennis racket
+bottle
+wine glass
+cup
+fork
+bowl
+apple
+orange
+hot dog
+hamburger: donut
+sandwich
+cake
+food: banana, orange, broccoli, carrot, pizza
+chair
+couch
+potted plant
+bed
+dining table
+furniture: toilet
+tv
+laptop
+mouse
+remote
+keyboard
+cell phone
+microwave: microwave, toaster
+oven
+refrigerator
+sink
+book
+clock
+vase
+toothbrush
+indoor: scissors, teddy bear, hair drier"""
+categories_2 = {}
+for line in group2_text.split("\n"):
+    if ':' not in line:
+        categories_2[line] = {line}
+    else:
+        category, words = line.split(': ')
+        words = words.split(', ')
+        categories_2[category] = set(words + [category])
+
+# QUERY
+query_categories_text = """person: person, women, woman, man, people, boy, girl, wife, sister, husband, friend, mom, dad, family, colleague
+bicycle: bicycle, motorcycle, bike, motorbike
+car: car, auto, automobile
+bus: bus, train, truck, public transport, metro, tram
+airplane: plane, airport
+boat: port, harbour, harbor, ship, sea, ocean, bay, fishing
+traffic light: intersection
+stop sign: intersection, sign
+bench: sit
+outdoor: fire hydrant, parking meter
+dog: dog, horse, pet, puppy
+animal: cow, sheep, giraffe, zebra, bear, bird, cat, elephant
+backpack: backpack, handbag, bag, knapsack, luggage
+tie: curtain, window
+suitcase: briefcase, luggage
+pen: baseball bat, pencil
+sport: frisbee, skis, snowboard, sports ball, kite, baseball glove, skateboard, surfboard, tennis racket, football, soccer
+bottle: jug, jar, can, glass, drink
+wine glass: glass
+cup: jug, mug, pint, bowl
+fork: spoon
+bowl: bowl
+apple
+orange
+sandwich: sandwich, burger, hamburger, bread
+hot dog: sausage, hotdog, meat, barbecue
+hamburger: donut, burger, cheeseburger, sandwich
+cake: birthday, chocolate, brownie, pie
+food: banana, sandwich, orange, broccoli, carrot, pizza, meal, seafood, eat, snack, meat, milk, cheese
+chair: bench
+couch: sofa
+potted plant, futon
+bed: pillow, sleep, mattress
+dining table: table, desk
+furniture: toilet
+tv: television, screen
+laptop: computer, ipad, tablet, notebook, macbook, mac
+mouse
+remote: remote control
+keyboard
+cell phone: phone, iphone, smartphone
+microwave: microwave, toaster, oven, cooker, stove
+oven: microwave, toaster, oven, cooker, stove
+refrigerator: fridge, freezer
+sink: bathroom, shower, dishes
+book: read, notebook, bookcase, bookshelf, bookstore
+clock: watch
+vase: flower
+toothbrush: toothpaste, brush, teeth
+indoor: scissors, teddy bear, hair drier
+"""
+query_categories = {}
+for line in query_categories_text.split("\n"):
+    if ':' not in line:
+        categories_2[line] = {line}
+    else:
+        category, words = line.split(': ')
+        words = words.split(', ')
+        query_categories[category] = set(words + [category])
+
+
+query_categories_text_2 = """elevator: elevator lobby, bank vault, locker room
+cafeteria: fastfood restaurant, restaurant kitchen, dining hall, food court, restaurant, butchers shop, restaurant patio, coffee shop, pizzeria, pub/indoor, bar, diner/outdoor, beer hall, bakery/shop, delicatessen
+office cubicles: office, work
+television room: television studio, living room, tv room, living room
+entrance hall: elevator lobby, entrance, gateway
+balcony: balcony, fence
+lobby: ballroom
+driveway
+church: synagogue, church, praying
+room: nursery, childs room, utility room, waiting room
+archive
+tree: tree house, tree farm, forest road, greenhouse, plant, green
+ceiling: berth, elevator shaft, alcove, attic, skylight, roof, wall
+wall: berth, dam, elevator shaft
+campus: industrial area, school, university, college
+gymnasium/indoor: gym, sport
+catatomb: grotto, grave
+fountain: gazebo, monument
+garden: roof garden, beer garden, zen garden, topiary garden, junkyard, yard, courtyard, campsite, greenhouse, patio, shrub
+hotel_room: youth hostel, dorm room, motel, bedroom, hotel/outdoor, hotel, accommodation, resting, sleep
+sea: ocean, wind farm, harbor, cliff, coast, boat deck, beach, wave, water
+garage: garage/outdoor, parking garage/indoor, parking garage/outdoor, garage, car garage, parking garage
+indoor
+airport_terminal: airport terminal
+aqueduct: canal
+stairs: amphitheater, mezzanine, staircase, stair
+skyscraper: water tower, construction site, tall building, high building, tower
+none: wheat field, boxing ring, embassy, manufactured home, hospital, ice skating rink, hangar, waterfall, crevasse, burial chamber, lock chamber, fire escape
+dark_room: movie theater/indoor, elevator shaft, home theater, dark room
+bathroom: jacuzzi/indoor, shower, bath
+mezzanine: staircase, stairs, stair
+kitchen: galley, wet bar
+roof: wind farm
+store: candy store, hardware store, shopping mall/indoor, bazaar, assembly line, market/indoor, auto factory, general store/indoor, department store, supermarket, kasbah, gift shop
+yard: junkyard, roof garder, beer garder, zen garden, topiary garden, courtyard, campsite, greenhouse, patio
+music: stage, music studio, stage/outdoor, guitar, piano, artist, singer
+dorm_room: dorm room
+bedroom: dorm room, motel
+museum: science museum, recreation room, museum/outdoor, art gallery
+clothing_store: clothing store, fabric store, clothes
+closet: clothing store, dressing room, fabric store, clothes, dressing, fabric
+street: bazaar/indoor, bazaar, downtown, street, promenade, medina, arcade, alley, walk, walking
+dining_room: bedchamber, dining table, dining room, dine, eating
+road: forest road, desert road, trench, highway
+jewelry: jewelry shop
+auto_showroom: auto showroom, car showroom, cars
+sauna
+promenade: medina, arch, alley, corridor
+arcade: promenade, medina, arch, alley, corridor
+sushi bar: restaurant, sushi, bar
+shed: chalet, oast house, loading dock, old house, small house, garden house
+living_room: living room
+office: server room, computer room
+landing_deck: airport, airplane cabin, runway
+door: jail cell, bank vault, locker room, doorway, barndoor, shopfront, entrance
+window: jail cell, bow window/indoor
+ice_cream_parlor: ice cream parlor, ice cream
+clothes: dressing room
+rail: railroad track
+station: bus station, airport terminal, train station, platform, subway station
+crowd: orchestra pit, crowds, many people
+parking_lot: parking lot, parking garage, parking
+conference_room: conference room, legislative chamber, conference center, conference
+escalator: escalator
+outdoor
+cockpit: airplane cabin, amusement arcade, airplane, cabin
+crosswalk: walk, cross the street, street crossing
+lecture_room: lecture room, classroom, lecture, presentation
+field: hayfield
+bridge
+bookstore: library, archive
+dark: movie theater, catacomb
+drugstore: pharmacy, drugs, medicine
+booth: phone booth, ticket booth
+residential_neighborhood: residential neighborhood, neighborhood
+harbor: wind farm, windmill, boat deck, ship, boat, port
+house: beach house, oast house, loading dock
+basement: storage room
+playground: sandbox
+store: shoe shop, hardware store
+hallway: corridor
+gas_station: gas station, gas
+plaza
+park
+clean_room: clean room
+reception
+pantry: refrigerator, fridge"""
+for line in query_categories_text_2.split("\n"):
+    if ':' not in line:
+        query_categories[line] = {line}
+    else:
+        category, words = line.split(': ')
+        words = words.split(', ')
+        query_categories[category] = set(words + [category])
+
+
+def process_query(text):
+    description2 = set()
+
+    string_bigrams = [" ".join(bg) for bg in bigrams(text.replace(",", "").split())]
+    for word in text.split() + string_bigrams:
+        for query_category in query_categories:
+            if word in query_categories[query_category]:
+                description2.add(query_category)
+
+    description1 = set()
+    for word in description2:
+        if word in query_categories_text_2:
+            description1.add(word)
+        else:
+            for category in categories_1:
+                if word in categories_1[category]:
+                    description1.add(category)
+
+    return list(description1), list(description2)
 
 
 stop_words = stopwords.words('english')
@@ -285,7 +543,6 @@ def generate_querystringquery_and_subquery(sq, max_change=1):
 def generate_query_embedding(sentence, numb_get_result=100):
     embedded_query, _ = create_bow_ft_sentence(sentence, my_dictionary, list_synonym_stemmed, my_idf)
     embedded_query = embedded_query.tolist()
-
     script_query = {
         "script_score": {
             "query": {"match_all": {}},
@@ -329,8 +586,6 @@ def create_location_query(sentence, field, boost=1000):
     new_location_part = []
     if len(location_part) > 0:
         for location in location_part:
-            print(location)
-            print("dcu car park 1" in address_and_gps)
             min_dist = 0.3
             min_location = None
             for address in address_and_gps:
@@ -350,8 +605,8 @@ def create_location_query(sentence, field, boost=1000):
                             "location": {
                                 "origin": {"lat": address_and_gps[min_location][0][0],
                                            "lon": address_and_gps[min_location][0][1]},
-                                "scale": f"{address_and_gps[min_location][1]}km",
-                                "decay": 0.5
+                                "scale": f"{address_and_gps[min_location][1] / 2}km",
+                                "decay": 0.25
                             }
                         },
                         "boost": 50
@@ -360,7 +615,6 @@ def create_location_query(sentence, field, boost=1000):
                 sentence = sentence.replace(location, "").replace("  ", " ")
 
             new_location_part.append(location)
-            print(new_location_part)
         location_part = " OR ".join(new_location_part)
         stt = True
         location_json = create_json_query_string_part(query=location_part, field=field, boost=boost)
@@ -373,7 +627,7 @@ def create_location_query(sentence, field, boost=1000):
     return sentence, stt, location_json, location_decay
 
 
-def generate_query_combined(q, max_change=1, tie_breaker=0.7, numb_of_result=100):
+def generate_query_combined(q, max_change=1, tie_breaker=0.7, numb_of_result=50):
     '''
     Quite the same with generate_es_query_dismax but now inclide query string query, not multimatch anymore
     Generate elastic-formatted request and use the result for the input of elasticsearch
@@ -383,6 +637,7 @@ def generate_query_combined(q, max_change=1, tie_breaker=0.7, numb_of_result=100
     Output:
         + request_string is the txt format of the elasticsearch formatted request
     '''
+    category_query = process_query(q.lower())
     q = q.lower()
     having_comma = q.find(",")
     if having_comma > 0:
@@ -390,7 +645,7 @@ def generate_query_combined(q, max_change=1, tie_breaker=0.7, numb_of_result=100
     else:
         having_comma = False
     result = "{\"size\":" + str(numb_of_result)
-    result += ",\"_source\": {\"includes\": [\"id\", \"description\", \"time\", \"location\", \"address\", \"nearby POI\", \"driving\", \"weekday\" ]}"
+    result += ",\"_source\": {\"includes\": [\"id\", \"description\", \"time\", \"location\", \"address\", \"nearby POI\", \"driving\", \"weekday\", \"category_description1\", \"category_description2\"]}"
     result += ",\"query\": {\"bool\": {\"must\": {\"dis_max\":{\"queries\":["
     queries_part = []
     q, having_location, location_query, location_decay = create_location_query(q, field="address", boost=10)
@@ -416,17 +671,33 @@ def generate_query_combined(q, max_change=1, tie_breaker=0.7, numb_of_result=100
                 create_json_query_string_part(query=sub_query[0], field="description", boost=0.35),
                 create_json_query_string_part(query=o_sub_query[0], field="description_clip", boost=0.1)
             ]
-    script_query = {
-        "script_score": {
-            "query": {"match_all": {}},
-            "script": {
-                "source": "9.5*(cosineSimilarity(params.query_embedded, doc['description_embedded']) + 1.0)",
-                "params": {"query_embedded": embedded_query}
+
+    if sum(embedded_query) != 0:
+        script_query = {
+            "script_score": {
+                "query": {"match_all": {}},
+                "script": {
+                    "source": "9.5*(cosineSimilarity(params.query_embedded, doc['description_embedded']) + 1.0)",
+                    "params": {"query_embedded": embedded_query}
+                }
             }
         }
-    }
+    else:
+        script_query = None
 
-    queries_part += [script_query] + location_decay
+    category = [
+                    {"terms": {
+                        "category_description1": category_query[0],
+                        "boost": 10
+                    }},
+                    {"terms": {
+                        "category_description2": category_query[1],
+                        "boost": 50
+                    }}
+                ]
+    if script_query:
+        queries_part += [script_query] + location_decay + category
+    else: queries_part = location_decay + category
     queries_part_string = str(queries_part)
     queries_part_string = queries_part_string.replace("'", "\"")
     queries_part_string = queries_part_string.replace("doc[\"description_embedded\"]", "doc['description_embedded']")
@@ -503,6 +774,7 @@ def generate_query_text(q, max_change=1, tie_breaker=0.7, numb_of_result=100):
     result += "}}}"
 
     request_string = result
+    print(request_string)
     return request_string
 
 

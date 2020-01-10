@@ -4,5 +4,6 @@ from . import views
 urlpatterns = [
     path('api/image/', views.images),
     path('api/image/autocomplete', views.autocomplete),
-    path('api/image/gps', views.gpssearch)
+    path('api/image/gps', views.gpssearch),
+    path('api/image/dual', views.dual_events)
 ]

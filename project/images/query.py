@@ -5,7 +5,8 @@ import requests
 import nltk
 from nltk.corpus import wordnet as wn
 from nltk.tokenize import word_tokenize
-from datetime import datetime
+from datetime import datetime, timedelta
+
 
 def is_location(word):
     word = word.split()[-1]
@@ -48,7 +49,7 @@ def query_all(es):
     return id_result
 
 
-def group_time(results):
+def group_time(results, min_value=5):
     grouped_results = []
     results = [(res, datetime.strptime(res[0]["time"], "%Y/%m/%d %H:%M:%S+00")) for res in results]
     sorted_time = sorted(results, key=lambda res: res[1])
@@ -56,7 +57,7 @@ def group_time(results):
     starting_index = 0
     for i in range(len(sorted_time) - 1):
         time_split = sorted_time[i + 1][1] - sorted_time[i][1]
-        if time_split.seconds > 120 and i - starting_index > 5:
+        if time_split.seconds > 120 and i - starting_index > min_value:
             grouped_results.append([x[0] for x in sorted_time[starting_index: i + 1]])
             starting_index = i + 1
 
@@ -71,6 +72,7 @@ def group_time(results):
     final_grouped_with_scores = sorted(final_grouped_with_scores, key=lambda x: x[0], reverse=True)
 
     return final_grouped_with_scores
+
 
 def get_autocomplete_query(text):
     split = text.rsplit(',', 1)
@@ -98,6 +100,7 @@ def get_autocomplete_query(text):
             return " ".join(temp_text[j + 1:]), " ".join(temp_text[:j + 1])
     return " ".join(temp_text[j:]), before_comma + " ".join(temp_text[:j])
 
+
 def es_bow(input_query):
     # query is the string query
     # List_synonym is the synonym file provided in the repo
@@ -113,6 +116,7 @@ def es_bow(input_query):
     else:
         id_images = []
     return group_time(id_images)
+
 
 def ES_autocomplete(es, original_query):
     query, not_included_query = get_autocomplete_query(original_query)
@@ -191,7 +195,9 @@ def ES_autocomplete(es, original_query):
 
         return id_result, not_included_query
 
+
 def gps_search(es, bounds, images):
+
     query_request = {
         "_source": {
             "includes": ["id", "description", "time", "location", "address", "nearby POI", "driving"]
@@ -216,22 +222,45 @@ def gps_search(es, bounds, images):
     if images:
         ids = []
         for period in images:
-            ids.extend([res["id"] for res in images[period]])
-        image_filter = json.dumps({
+            ids.extend([res["id"] for res in period[1]])
+        image_filter = {
             "terms": {
-                "ids": ids
+                "id": ids
             }
-        })
-        print(type(query_request["query"]["bool"]))
-        query_request["query"]["bool"][1] = [query_request["query"]["bool"][1], image_filter]
-
+        }
+        query_request["query"]["bool"]["filter"] = [query_request["query"]["bool"]["filter"], image_filter]
     query_request_json = json.dumps(query_request)
-    res = es.search(index="lsc2019_combined_text_bow", body=query_request_json, size=9999)  # Show all result (9999 results if possible)
+    res = es.search(index="lsc2019_combined_text_bow", body=query_request_json, size=50)  # Show all result (9999 results if possible)
     id_result = [[r["_source"], r["_score"]] for r in res['hits']['hits']]
-    print(len(id_result))
 
     return group_time(id_result)
 
+
+def es_two_events(query, conditional_query, condition, time_limit=10):
+    data = mylib_v2.generate_query_combined(q=query)
+    headers = {"Content-Type": "application/json"}
+    response = requests.post("http://localhost:9200/lsc2019_combined_text_bow/_search", headers=headers, data=data)
+    response_json = response.json()  # Convert to json as dict formatted
+    main_events = group_time([[d["_source"], d["_score"]] for d in response_json["hits"]["hits"]], 0)
+
+    pairs = []
+    for score, main_event in main_events:
+        time1 = datetime.strptime(main_event[0]["time"], '%Y/%m/%d %H:%M:00+00')
+        if condition == 'after':
+            time_bound = time1 - timedelta(hours=min(10, time1.hour))
+            new_query = f"{conditional_query} on May {time1.day} before {datetime.strftime(time1, '%H:%M')} after {datetime.strftime(time_bound, '%H:%M')}"
+        else:
+            time_bound = time1 + timedelta(hours=min(10, 23 - time1.hour))
+            new_query = f"{conditional_query} on May {time1.day} after {datetime.strftime(time1, '%H:%M')} before {datetime.strftime(time_bound, '%H:%M')}"
+        data = mylib_v2.generate_query_combined(q=new_query)
+        headers = {"Content-Type": "application/json"}
+        response = requests.post("http://localhost:9200/lsc2019_combined_text_bow/_search", headers=headers, data=data)
+        response_json = response.json()  # Convert to json as dict formatted
+        conditional_events = [d["_source"] for d in response_json["hits"]["hits"]][:10]
+        if len(conditional_events) > 0:
+            pairs.append((score, main_event + conditional_events))
+
+    return pairs
 
 if __name__ == "__main__":
     query = "2 cars"

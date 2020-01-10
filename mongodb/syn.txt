@@ -1,21 +1,5 @@
-import json
-import pickle
-from collections import Counter
-from nltk import word_tokenize
-from nltk.stem import PorterStemmer
-from nltk import bigrams
-from nltk import MWETokenizer
-
-# place365 = json.load(open('data/u1_place365.json'))
-# places = Counter()
-# for image in place365:
-#     for word in place365[image].split(", "):
-#         places[word] += 1
-#
-# print(places.most_common(100).keys())
-
-# GROUP 1
-group1_text="""person: person
+<group1>
+person: person
 vehicle: bicycle, motorcycle, car, bus, train, truck, airplane, boat
 outdoor: traffic light, fire hydrant, stop sign, parking meter, bench
 animal: dog, horse, cow, sheep, giraffe, zebra, bear, bird, cat, dog, horse, sheep, cow, elephant, bear
@@ -26,15 +10,10 @@ food: banana, apple, sandwich, orange, broccoli, carrot, hot dog, pizza, donut, 
 furniture: chair, couch, potted plant, bed, dining table, toilet
 electronic: tv, laptop, mouse, remote, keyboard, cell phone
 appliance: microwave, oven, toaster, sink, refrigerator
-indoor: book, clock, vase, scissors, teddy bear, hair drier, toothbrush"""
-categories_1 = {}
-for line in group1_text.split("\n"):
-    category, words = line.split(': ')
-    words = words.split(', ')
-    categories_1[category] = set(words + [category])
+indoor: book, clock, vase, scissors, teddy bear, hair drier, toothbrush
 
-# GROUP 2:
-group2_text="""person: person
+<group2>
+person: person
 bicycle: bicycle, motorcycle
 car: car
 bus: bus, train, truck
@@ -85,18 +64,63 @@ book
 clock
 vase
 toothbrush
-indoor: scissors, teddy bear, hair drier"""
-categories_2 = {}
-for line in group2_text.split("\n"):
-    if ':' not in line:
-        categories_2[line] = {line}
-    else:
-        category, words = line.split(': ')
-        words = words.split(', ')
-        categories_2[category] = set(words + [category])
+indoor: scissors, teddy bear, hair drier
 
-# GROUP 3
-group3_text="""elevator: elevator lobby, elevator/door, bank vault, locker room
+
+<for query>
+person: person, women, woman, man, people, boy, girl, wife, sister, husband, friend, mom, dad, family, colleague
+bicycle: bicycle, motorcycle, bike, motorbike
+car: car, auto, automobile
+bus: bus, train, truck, public transport, metro, tram
+airplane: plane, airport
+boat: port, harbour, harbor, ship, sea, ocean, bay, fishing
+traffic light: intersection
+stop sign: intersection, sign
+bench: sit
+outdoor: fire hydrant, parking meter
+dog: dog, horse, pet, puppy
+animal: cow, sheep, giraffe, zebra, bear, bird, cat, elephant
+backpack: backpack, handbag, bag, knapsack, luggage
+tie: curtain, window
+suitcase: briefcase, luggage
+pen: baseball bat, pencil
+sport: frisbee, skis, snowboard, sports ball, kite, baseball glove, skateboard, surfboard, tennis racket, football, soccer
+bottle: jug, jar, can, glass, drink
+wine glass: glass
+cup: jug, mug, pint, bowl
+fork: spoon
+bowl: bowl
+apple
+orange
+sandwich: sandwich, burger, hamburger, bread
+hot dog: sausage, hotdog, meat, barbecue
+hamburger: donut, burger, cheeseburger, sandwich
+cake: birthday, chocolate, brownie, pie
+food: banana, sandwich, orange, broccoli, carrot, pizza, meal, seafood, eat, snack, meat, milk, cheese
+chair: bench
+couch: sofa
+potted plant, futon
+bed: pillow, sleep, mattress
+dining table: table, desk
+furniture: toilet
+tv: television, screen
+laptop: computer, ipad, tablet, notebook, macbook, mac
+mouse
+remote: remote control
+keyboard
+cell phone: phone, iphone, smartphone
+microwave: microwave, toaster, oven, cooker, stove
+oven: microwave, toaster, oven, cooker, stove
+refrigerator: fridge, freezer
+sink: bathroom, shower, dishes
+book: read, notebook, bookcase, bookshelf, bookstore
+clock: watch
+vase: flower
+toothbrush: toothpaste, brush, teeth
+indoor: scissors, teddy bear, hair drier
+
+<Place>
+elevator: elevator lobby, elevator/door, bank vault, locker room
 cafeteria: fastfood restaurant, restaurant kitchen, dining hall, food court, restaurant, butchers shop, restaurant patio, coffee shop, pizzeria, pub/indoor, bar, diner/outdoor, beer hall, bakery/shop, delicatessen
 office cubicles
 television room: television studio, living room
@@ -187,78 +211,11 @@ plaza
 park
 clean_room: clean room
 reception
-pantry: refrigerator"""
-categories_3 = {}
-for line in group3_text.split("\n"):
-    if ':' not in line:
-        categories_3[line] = {line}
-    else:
-        category, words = line.split(': ')
-        words = words.split(', ')
-        categories_3[category] = set(words + [category])
+pantry: refrigerator
 
-# QUERY
-query_categories_text="""person: person, women, woman, man, people, boy, girl, wife, sister, husband, friend, mom, dad, family, colleague
-bicycle: bicycle, motorcycle, bike, motorbike
-car: car, auto, automobile
-bus: bus, train, truck, public transport, metro, tram
-airplane: plane, airport
-boat: port, harbour, harbor, ship, sea, ocean, bay, fishing
-traffic light: intersection
-stop sign: intersection, sign
-bench: sit
-outdoor: fire hydrant, parking meter
-dog: dog, horse, pet, puppy
-animal: cow, sheep, giraffe, zebra, bear, bird, cat, elephant
-backpack: backpack, handbag, bag, knapsack, luggage
-tie: curtain, window
-suitcase: briefcase, luggage
-pen: baseball bat, pencil
-sport: frisbee, skis, snowboard, sports ball, kite, baseball glove, skateboard, surfboard, tennis racket, football, soccer
-bottle: jug, jar, can, glass, drink
-wine glass: glass
-cup: jug, mug, pint, bowl
-fork: spoon
-bowl: bowl
-apple
-orange
-sandwich: sandwich, burger, hamburger, bread
-hot dog: sausage, hotdog, meat, barbecue
-hamburger: donut, burger, cheeseburger, sandwich
-cake: birthday, chocolate, brownie, pie
-food: banana, sandwich, orange, broccoli, carrot, pizza, meal, seafood, eat, snack, meat, milk, cheese
-chair: bench
-couch: sofa
-potted plant, futon
-bed: pillow, sleep, mattress
-dining table: table, desk
-furniture: toilet
-tv: television, screen
-laptop: computer, ipad, tablet, notebook, macbook, mac
-mouse
-remote: remote control
-keyboard
-cell phone: phone, iphone, smartphone
-microwave: microwave, toaster, oven, cooker, stove
-oven: microwave, toaster, oven, cooker, stove
-refrigerator: fridge, freezer
-sink: bathroom, shower, dishes
-book: read, notebook, bookcase, bookshelf, bookstore
-clock: watch
-vase: flower
-toothbrush: toothpaste, brush, teeth
-indoor: scissors, teddy bear, hair drier
-"""
-query_categories = {}
-for line in query_categories_text.split("\n"):
-    if ':' not in line:
-        query_categories[line] = {line}
-    else:
-        category, words = line.split(': ')
-        words = words.split(', ')
-        query_categories[category] = set(words + [category])
 
-query_categories_text_2 = """elevator: elevator lobby, bank vault, locker room
+<Query>
+elevator: elevator lobby, bank vault, locker room
 cafeteria: fastfood restaurant, restaurant kitchen, dining hall, food court, restaurant, butchers shop, restaurant patio, coffee shop, pizzeria, pub/indoor, bar, diner/outdoor, beer hall, bakery/shop, delicatessen
 office cubicles: office, work
 television room: television studio, living room, tv room, living room
@@ -330,7 +287,7 @@ field: hayfield
 bridge
 bookstore: library, archive
 dark: movie theater, catacomb
-drugstore: pharmacy, drugs
+drugstore: pharmacy, drugs, medicine
 booth: phone booth, ticket booth
 residential_neighborhood: residential neighborhood, neighborhood
 harbor: wind farm, windmill, boat deck, ship, boat, port
@@ -344,72 +301,4 @@ plaza
 park
 clean_room: clean room
 reception
-pantry: refrigerator, fridge"""
-for line in query_categories_text_2.split("\n"):
-    if ':' not in line:
-        query_categories[line] = {line}
-    else:
-        category, words = line.split(': ')
-        words = words.split(', ')
-        query_categories[category] = set(words + [category])
-
-
-all_terms = set()
-for category in categories_1:
-    all_terms = all_terms.union(categories_1[category])
-for category in categories_2:
-    all_terms = all_terms.union(categories_2[category])
-for category in query_categories:
-    all_terms = all_terms.union(query_categories[category])
-
-def process_description(text):
-    description1 = set()
-    description2 = set()
-
-    for word in text.split(", "):
-        word = word.split(' ', 1)[-1]
-        for category in categories_1:
-            if word in categories_1[category]:
-                description1.add(category)
-
-        for category in categories_2:
-            if word in categories_2[category]:
-                description2.add(category)
-
-        for category in categories_3:
-            if word in categories_3[category]:
-                description1.add(category)
-                description2.add(category)
-
-    return list(description1), list(description2)
-
-def process_query(text):
-    description2 = set()
-
-    string_bigrams = [" ".join(bg) for bg in bigrams(text.replace(",", "").split())]
-    for word in text.split() + string_bigrams:
-        for query_category in query_categories:
-            if word in query_categories[query_category]:
-                description2.add(query_category)
-
-    description1 = set()
-    for word in description2:
-        if word in query_categories_text_2:
-            description1.add(word)
-        else:
-            for category in categories_1:
-                if word in categories_1[category]:
-                    description1.add(category)
-
-    return list(description1), list(description2)
-
-
-print(process_description("1 person, 1 cup, 2 bowl, 1 potted plant, 1 dining table, indoor, bow window/indoor"))
-print()
-print(process_query("a shed at home"))
-print(process_query("buying medicine"))
-print(process_query("walking my dog at Howth"))
-print(process_query("grilling hamburger in the yard"))
-print(process_query("apple bowl and orange in the kitchen"))
-print(process_query("red sign at the helix"))
-#shopping at Donaghmede Shopping Centre
+pantry: refrigerator, fridge
