@@ -15,7 +15,6 @@ import os
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
@@ -26,7 +25,6 @@ SECRET_KEY = '+9+zyjji09sas9=s56tpe%bs#g@(m-je)i13eslmu-c9@eo4k9'
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -41,7 +39,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
 ]
-
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -74,13 +71,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'project.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-DATABASES = {'default': {'ENGINE': 'djongo',
-                         'NAME': 'test',
-                         'HOST': 'mongodb+srv://alie:mrF6V4p32aOEayJX@user1-ielbg.mongodb.net/test?retryWrites=true&w=majority',}}
-#
+# # Database
+# # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
+# DATABASES = {'default': {'ENGINE': 'django.db.backends.mysql',
+#                          'NAME': 'test',
+#                          'HOST': 'mongodb+srv://alie:mrF6V4p32aOEayJX@user1-ielbg.mongodb.net/test?retryWrites=true&w=majority', }}
+# #
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.mysql',

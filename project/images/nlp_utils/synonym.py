@@ -1,21 +1,36 @@
 import json
-import pickle
-from collections import Counter
-from nltk import word_tokenize
-from nltk.stem import PorterStemmer
-from nltk import bigrams
-from nltk import MWETokenizer
+import os
+import shelve
+from collections import defaultdict
 
-# place365 = json.load(open('data/u1_place365.json'))
-# places = Counter()
-# for image in place365:
-#     for word in place365[image].split(", "):
-#         places[word] += 1
-#
-# print(places.most_common(100).keys())
+from gensim.models import Word2Vec
+from nltk import bigrams
+from nltk.corpus import wordnet as wn
+from nltk.tag import pos_tag
+from nltk.tokenize import word_tokenize, MWETokenizer
+try:
+    from pattern.en import lemma, singularize
+except:
+    from pattern3.en import lemma, singularize
+
+
+
+def shelve_it(file_name):
+    d = shelve.open(file_name)
+
+    def decorator(func):
+        def new_func(param):
+            if param not in d:
+                d[param] = func(param)
+            return d[param]
+
+        return new_func
+
+    return decorator
+
 
 # GROUP 1
-group1_text="""person: person
+group1_text = """person: person
 vehicle: bicycle, motorcycle, car, bus, train, truck, airplane, boat
 outdoor: traffic light, fire hydrant, stop sign, parking meter, bench
 animal: dog, horse, cow, sheep, giraffe, zebra, bear, bird, cat, dog, horse, sheep, cow, elephant, bear
@@ -34,7 +49,7 @@ for line in group1_text.split("\n"):
     categories_1[category] = set(words + [category])
 
 # GROUP 2:
-group2_text="""person: person
+group2_text = """person: person
 bicycle: bicycle, motorcycle
 car: car
 bus: bus, train, truck
@@ -95,110 +110,8 @@ for line in group2_text.split("\n"):
         words = words.split(', ')
         categories_2[category] = set(words + [category])
 
-# GROUP 3
-group3_text="""elevator: elevator lobby, elevator/door, bank vault, locker room
-cafeteria: fastfood restaurant, restaurant kitchen, dining hall, food court, restaurant, butchers shop, restaurant patio, coffee shop, pizzeria, pub/indoor, bar, diner/outdoor, beer hall, bakery/shop, delicatessen
-office cubicles
-television room: television studio, living room
-entrance hall: elevator lobby
-balcony: balcony/exterior, balcony/interior
-lobby: ballroom
-driveway
-church: church/indoor, synagogue/outdoor
-room: nursery, childs room, utility room, waiting room
-archive
-tree: tree house, tree farm, forest road, greenhouse
-ceiling: berth, elevator shaft, alcove, attic
-wall: berth, dam, elevator shaft
-campus: industrial area
-gymnasium/indoor
-catatomb: grotto
-fountain
-garden: roof garden, beer garden, zen garden, topiary garden, junkyard, yard, courtyard, campsite, greenhouse, patio
-hotel_room: youth hostel, dorm room, motel, bedroom, hotel/outdoor
-sea: ocean, wind farm, harbor, cliff, coast, boat deck
-garage: garage/outdoor, parking garage/indoor, parking garage/outdoor
-indoor
-airport_terminal: airport terminal
-aqueduct: canal
-stairs: amphitheater, mezzanine, staircase
-skyscraper: water tower, construction site
-none: wheat field, boxing ring, embassy, manufactured home, hospital, ice skating rink, hangar/indoor, hangar/outdoor, waterfall, crevasse, burial chamber, lock chamber, fire escape
-dark_room: movie theater/indoor, elevator shaft, home theater
-bathroom: jacuzzi/indoor, shower
-mezzanine: staircase
-kitchen: galley, wet bar
-roof: wind farm
-store: candy store, hardware store, shopping mall/indoor, bazaar/indoor, bazaar/outdoor, assembly line, market/indoor, auto factory, general store/indoor, department store, supermarket, kasbah, gift shop
-yard: junkyard, roof garder, beer garder, zen garden, topiary garden, courtyard, campsite, greenhouse, patio
-music: stage, music studio, stage/outdoor
-dorm_room: dorm room
-bedroom: dorm room, motel
-museum: science museum, recreation room, museum/outdoor, art gallery
-clothing_store: clothing store, fabric store
-closet: clothing store, dressing room, fabric store
-street: bazaar/indoor, bazaar/outdoor, downtown, street, promenade, medina, arcade, alley
-dining_room: bedchamber, dining table, dining room
-road: forest road, desert road, trench, highway
-jewelry: jewelry shop
-auto_showroom: auto showroom
-sauna
-promenade: medina, arch, alley, corridor
-arcade: promenade, medina, arch, alley, corridor
-none: repair shop, martial arts gym, pagoda, physics laboratory, chemistry lab, biology laboratory, hospital room, kennel, stable
-sushi bar: restaurant
-shed: chalet, oast house, loading dock
-living_room: living room
-office: server room, computer room
-landing_deck: airport, airplane cabin, runway
-door: jail cell, bank vault, locker room, doorway/outdoor, barndoor, shopfront
-window: jail cell, bow window/indoor
-ice_cream_parlor: ice cream parlor
-clothes: dressing room
-rail: railroad track
-none: rock arch, arena/performance, laundromat, badlands, natural history museum, golf course, swimming pool/indoor, lock chamber
-station: bus station/indoor, airport terminal, train station/platform, subway station/platform
-crowd: orchestra pit
-parking_lot: parking lot, parking garage/outdoor, parking garage/indoor
-conference_room: conference room, legislative chamber, conference center
-escalator: escalator/indoor
-outdoor
-cockpit: airplane cabin, amusement arcade
-none: art studio, volcano, fire station, oilrig, train interior, sky, art gallery, auditorium, iceberg, chalet, mausoleum, atrium/public
-crosswalk
-lecture_room: lecture room, classroom
-field: hayfield
-bridge
-bookstore: library, archive, library/indoor
-dark: movie theater/indoor, catacomb
-drugstore: pharmacy
-booth: phone booth, ticket booth, booth/indoor
-residential_neighborhood: residential neighborhood
-harbor: wind farm, windmill, boat deck
-house: beach house, oast house, loading dock
-basement: storage room
-none: underwater/ocean deep, aquarium, pet shop, artists loft, operating room, veterinarians office, porch, bus interior, desert/sand, igloo
-none: discotheque, carrousel, home office, lighthouse, bowling alley, landfill, flea market/indoor, music studio, amusement park, beauty salon, car interior
-playground: sandbox
-store: shoe shop, hardware store
-hallway: corridor
-gas_station: gas station
-plaza
-park
-clean_room: clean room
-reception
-pantry: refrigerator"""
-categories_3 = {}
-for line in group3_text.split("\n"):
-    if ':' not in line:
-        categories_3[line] = {line}
-    else:
-        category, words = line.split(': ')
-        words = words.split(', ')
-        categories_3[category] = set(words + [category])
-
 # QUERY
-query_categories_text="""person: person, women, woman, man, people, boy, girl, wife, sister, husband, friend, mom, dad, family, colleague
+query_categories_text = """person: person, women, woman, man, people, boy, girl, wife, sister, husband, friend, mom, dad, family, colleague
 bicycle: bicycle, motorcycle, bike, motorbike
 car: car, auto, automobile
 bus: bus, train, truck, public transport, metro, tram
@@ -252,7 +165,7 @@ indoor: scissors, teddy bear, hair drier
 query_categories = {}
 for line in query_categories_text.split("\n"):
     if ':' not in line:
-        query_categories[line] = {line}
+        categories_2[line] = {line}
     else:
         category, words = line.split(': ')
         words = words.split(', ')
@@ -330,7 +243,7 @@ field: hayfield
 bridge
 bookstore: library, archive
 dark: movie theater, catacomb
-drugstore: pharmacy, drugs
+drugstore: pharmacy, drugs, medicine
 booth: phone booth, ticket booth
 residential_neighborhood: residential neighborhood, neighborhood
 harbor: wind farm, windmill, boat deck, ship, boat, port
@@ -354,35 +267,6 @@ for line in query_categories_text_2.split("\n"):
         query_categories[category] = set(words + [category])
 
 
-all_terms = set()
-for category in categories_1:
-    all_terms = all_terms.union(categories_1[category])
-for category in categories_2:
-    all_terms = all_terms.union(categories_2[category])
-for category in query_categories:
-    all_terms = all_terms.union(query_categories[category])
-
-def process_description(text):
-    description1 = set()
-    description2 = set()
-
-    for word in text.split(", "):
-        word = word.split(' ', 1)[-1]
-        for category in categories_1:
-            if word in categories_1[category]:
-                description1.add(category)
-
-        for category in categories_2:
-            if word in categories_2[category]:
-                description2.add(category)
-
-        for category in categories_3:
-            if word in categories_3[category]:
-                description1.add(category)
-                description2.add(category)
-
-    return list(description1), list(description2)
-
 def process_query(text):
     description2 = set()
 
@@ -404,12 +288,218 @@ def process_query(text):
     return list(description1), list(description2)
 
 
-print(process_description("1 person, 1 cup, 2 bowl, 1 potted plant, 1 dining table, indoor, bow window/indoor"))
-print()
-print(process_query("a shed at home"))
-print(process_query("buying medicine"))
-print(process_query("walking my dog at Howth"))
-print(process_query("grilling hamburger in the yard"))
-print(process_query("apple bowl and orange in the kitchen"))
-print(process_query("red sign at the helix"))
-#shopping at Donaghmede Shopping Centre
+import time
+
+
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        if 'log_time' in kw:
+            name = kw.get('log_name', method.__name__.upper())
+            kw['log_time'][name] = int((te - ts) * 1000)
+        else:
+            print('%r  %2.2f ms' % \
+                  (method.__name__, (te - ts) * 1000))
+        return result
+
+    return timed
+
+
+def get_most_similar(model, word, vocabulary):
+    if word in model.wv.vocab:
+        vocabulary = [w for w in vocabulary if w in model.wv.vocab]
+        if vocabulary:
+            return sorted(zip(vocabulary, model.wv.distances(word, vocabulary)), key=lambda x: x[1])
+    return []
+
+
+hyper = lambda s: s.hypernyms()
+hypo = lambda s: s.hyponyms()
+holo = lambda s: s.member_holonyms() + s.substance_holonyms() + s.part_holonyms()
+mero = lambda s: s.member_meronyms() + s.substance_meronyms() + s.part_meronyms()
+
+
+def list_lemmas(synsets_list):
+    for synset in synsets_list:
+        for lemma in synset.lemmas():
+            yield lemma.name()
+
+
+def update_lemmas(lemma_dicts, synsets_list, depth):
+    for lemma in list_lemmas(synsets_list):
+        if lemma not in lemma_dicts:
+            lemma_dicts[lemma] = depth
+        else:
+            lemma_dicts[lemma] = min(lemma_dicts[lemma], depth)
+    return lemma_dicts
+
+
+@shelve_it('hypernyms.shelve')
+def get_hypernyms(word):
+    syns = wn.synsets(word, pos='n')
+    results = {}
+    for syn in syns:
+        for depth in range(10):
+            if depth == 0:
+                for lemma in syn.lemmas():
+                    results[lemma.name()] = 0
+            else:
+                results = update_lemmas(results, syn.closure(hyper, depth=depth), depth)
+    return results
+
+
+@shelve_it('keyword_cache.shelve')
+def inspect(params):
+    word, max_depth = params.split('/')
+    max_depth = int(max_depth)
+    syns = wn.synsets(word, pos='n')
+    result = {"lemmas": {}, "hypernyms": {}, "hyponyms": {}, "holonyms": {}, "meronyms": {}}
+    for syn in syns:
+        for lemma in syn.lemmas():
+            result["lemmas"][lemma.name()] = 0
+        for depth in range(max_depth):
+            result["hypernyms"] = update_lemmas(result["hypernyms"], syn.closure(hyper, depth=depth), depth)
+            result["hyponyms"] = update_lemmas(result["hyponyms"], syn.closure(hypo, depth=depth), depth)
+            result["holonyms"] = update_lemmas(result["holonyms"], syn.closure(holo, depth=depth), depth)
+            result["meronyms"] = update_lemmas(result["meronyms"], syn.closure(mero, depth=depth), depth)
+    return result
+
+
+@shelve_it('similar_cache.shelve')
+def get_similar(word):
+    kws = [kw.keyword for kw in KEYWORDS]
+    if word in kws:
+        return [word]
+    similars = defaultdict(lambda: 10)
+
+    for kw in KEYWORDS:
+        is_sim, new_depth = kw.is_similar(word)
+        if is_sim:
+            similars[kw.keyword] = min(new_depth, similars[kw.keyword])
+    return list(similars.keys())
+
+
+class Keyword:
+    def __init__(self, word):
+        word = word.replace(' ', '_')
+        if word in ["waiting_in_line", "using_tools"]:
+            self.keyword = word
+        else:
+            if word == "bakery/shop":
+                self.keyword = "bakery"
+            else:
+                self.keyword = word
+            depth = 0 if self.keyword in ["animal", "person", "food"] else 3
+            self.words = inspect(f"{self.keyword}/{depth}")
+
+    def is_similar(self, word):
+        word = word.replace(' ', '_')
+        if word == self.keyword:
+            return True, -1
+        if self.keyword in ["waiting_in_line", "using_tools"] or self.words is None:
+            return False, 10
+        if self.words:
+            if word in self.words["lemmas"]:
+                return True, 0
+
+        for nyms in self.words:
+            if word in self.words[nyms]:
+                return True, self.words[nyms][word]
+
+        hypernyms = get_hypernyms(word)
+        if self.keyword in hypernyms:
+            return True, hypernyms[self.keyword]
+        else:
+            return False, 10
+
+
+specials = {"cloudy": "cloud"}
+
+
+@shelve_it('process_cache.shelve')
+def process_word(word):
+    words = word.replace('_', ' ').replace('/', ' ').split()
+    new_words = []
+    for word, tag in pos_tag(words):
+        if word in specials:
+            new_words.append(specials[word])
+        else:
+            if tag == "NNS":
+                new_words.append(singularize(word))
+            else:
+                new_words.append(lemma(word))
+    return new_words
+
+
+COMMON_PATH = os.getenv("COMMON_PATH")
+vocabulary = json.load(open(f'{COMMON_PATH}/simples.json')).keys()
+KEYWORDS = [Keyword(kw) for kw in vocabulary]
+model = Word2Vec.load(f"{COMMON_PATH}/word2vec.model")
+map2deeplab = json.load(open(f"{COMMON_PATH}/map2deeplab.json"))
+deeplab2simple = json.load(open(f"{COMMON_PATH}/deeplab2simple.json"))
+simples = json.load(open(f"{COMMON_PATH}/simples.json"))
+
+tokenizer = MWETokenizer()
+for kw in vocabulary:
+    tokenizer.add_mwe(kw.split('_'))
+
+def to_deeplab(word):
+    for kw in map2deeplab:
+        if word in map2deeplab[kw][1]:
+            yield deeplab2simple[kw]
+
+
+def get_all_similar(words, must_not_terms):
+    shoulds = set()
+    musts = set()
+    for word in words:
+        for w in to_deeplab(word):
+            if w in vocabulary:
+                musts.add(w)
+            print(w)
+        else:
+            for w in process_word(word):
+                similars = get_similar(w)
+                if similars:
+                    if w in similars:
+                        musts.add(w)
+                        shoulds.update(similars)
+                    else:
+                        shoulds.update(similars)
+                for w2, dist in get_most_similar(model, w, vocabulary)[:5]:
+                    print(w2, dist)
+                    if dist < 0.1:
+                        musts.add(w2)
+                    else:
+                        shoulds.add(w2)
+                    # print(w.ljust(20), round(dist, 2))
+
+    musts = musts.difference(must_not_terms)
+    musts = musts.difference(["airplane", "plane"])
+    print(musts)
+    shoulds = shoulds.difference(must_not_terms)
+    return list(musts), list(shoulds)
+
+
+def process_string(string, must_not_terms):
+    tokens = tokenizer.tokenize(word_tokenize(string.lower()))
+    pos = pos_tag(tokens)
+    s = []
+    for w, t in pos:
+        if w == "be":
+            continue
+        if t in ["NN", "VB"]:
+            s.append(w)
+        elif t in ["NNS", "VBG", "VBP", "VBZ", "VBD", "VBN"]:
+            w = singularize(lemma(w))
+            if w != "be":
+                s.append(w)
+    return get_all_similar(tokenizer.tokenize(s), must_not_terms)
+
+
+if __name__ == "__main__":
+    # get_most_similar_to_multiple(word2vec, ["clock", "flower", "lamp", "monster", "rabbit", "bed"])
+    print(process_string(
+        "Eating fishcakes, bread and salad after preparing my presentation in powerpoint. It must have been lunch time. There was a guy in a blue sweater. I think there were phones on the table. After lunch, I made a coffee."))
