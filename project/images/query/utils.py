@@ -106,3 +106,35 @@ def get_time_of_group(images):
     begin_time = min(times)
     end_time = max(times)
     return begin_time, end_time
+
+
+def find_place_in_available_times(grouped_times, begin_time, end_time, time_limit=2):
+    if grouped_times:
+        for time in grouped_times:
+            if abs(begin_time - grouped_times[time]["begin_time"]) < timedelta(hours=time_limit) and \
+                    abs(end_time - grouped_times[time]["end_time"]) < timedelta(hours=time_limit):
+                begin_time = min(
+                    begin_time, grouped_times[time]["begin_time"])
+                end_time = max(
+                    end_time, grouped_times[time]["end_time"])
+                return time, begin_time, end_time
+    return "", begin_time, end_time
+
+
+def find_time_span(groups):
+    """
+    time can be -1 for 1h before
+    """
+    times = {}
+    count = 0
+    for group in groups:
+        time, begin_time, end_time = find_place_in_available_times(
+            times, group["begin_time"], group["end_time"])
+        if time:
+            times[time]["begin_time"] = begin_time
+            times[time]["end_time"] = end_time
+        else:
+            count += 1
+            times[f"time_{count}"] = {"begin_time": begin_time,
+                                      "end_time": end_time}
+    return times.values()

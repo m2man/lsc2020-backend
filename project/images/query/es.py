@@ -142,39 +142,39 @@ def individual_es(query, get_time_bound=False, group_time=0.5, size=1000, extra_
                 "descriptions": must_not_terms
             }}
 
-    print(json.dumps(json_query), "lsc2020")
+    # print(json.dumps(json_query), "lsc2020")
     return group_results(post_request(json.dumps(json_query), "lsc2020"), get_time_bound, group_time, group_factor)
 
 
-def es_two_events(query, conditional_query, condition, time_limit=10, return_extra_filter=False):
-    if not time_limit:
-        time_limit = "1"
-    print(condition)
+def forward_search(query, conditional_query, condition, time_limit=10):
     main_events = individual_es(
         query, get_time_bound=True, size=1000, group_factor="scene")
     extra_filter_scripts = []
-    # for main_event in main_events:
-    #     if condition == "before":
-    #         time = datetime.strftime(
-    #             main_event["begin_time"], "%Y, %m, %d, %H, %M, %S")
-    #         time = ', '.join([str(int(i)) for i in time.split(', ')])
-    #         time = f"ZonedDateTime.of({time}, 0, ZoneId.of('Z'))"
-    #         script = f" 0 < ChronoUnit.HOURS.between(doc['time'].value, {time}) &&  ChronoUnit.HOURS.between(doc['time'].value, {time}) < {float(time_limit) + 2} "
-    #     else:
-    #         time = datetime.strftime(
-    #             main_event["end_time"], "%Y, %m, %d, %H, %M, %S")
-    #         time = ', '.join([str(int(i)) for i in time.split(', ')])
-    #         time = f"ZonedDateTime.of({time}, 0, ZoneId.of('Z'))"
-    #         script = f" 0 < ChronoUnit.HOURS.between({time}, doc['time'].value) &&  ChronoUnit.HOURS.between({time}, doc['time'].value) < {float(time_limit)+ 2} "
-    #     extra_filter_scripts.append(f"({script})")
-    # extra_filter_scripts = [f''"||".join(extra_filter_scripts)]
 
+    for time_group in find_time_span(main_events):
+        if condition == "before":
+            time = datetime.strftime(
+                time_group["begin_time"], "%Y, %m, %d, %H, %M, %S")
+            time = ', '.join([str(int(i)) for i in time.split(', ')])
+            time = f"ZonedDateTime.of({time}, 0, ZoneId.of('Z'))"
+            script = f" 0 < ChronoUnit.HOURS.between(doc['time'].value, {time}) &&  ChronoUnit.HOURS.between(doc['time'].value, {time}) < {float(time_limit) + 2} "
+        else:
+            time = datetime.strftime(
+                time_group["end_time"], "%Y, %m, %d, %H, %M, %S")
+            time = ', '.join([str(int(i)) for i in time.split(', ')])
+            time = f"ZonedDateTime.of({time}, 0, ZoneId.of('Z'))"
+            script = f" 0 < ChronoUnit.HOURS.between({time}, doc['time'].value) &&  ChronoUnit.HOURS.between({time}, doc['time'].value) < {float(time_limit)+ 2} "
+        extra_filter_scripts.append(f"({script})")
+    extra_filter_scripts = [f''"||".join(extra_filter_scripts)]
     conditional_events = individual_es(conditional_query,
                                        get_time_bound=True,
                                        group_time=2, size=10000,
                                        extra_filter_scripts=None)
 
-    print(len(main_events), len(conditional_events))
+    return main_events, conditional_events, extra_filter_scripts
+
+
+def add_pairs(main_events, conditional_events, condition, time_limit):
     pair_events = []
     for main_event in main_events:
         for conditional_event in conditional_events:
@@ -190,6 +190,25 @@ def es_two_events(query, conditional_query, condition, time_limit=10, return_ext
                                     "after": main_event["after"],
                                     "begin_time": main_event["begin_time"],
                                     "end_time": main_event["end_time"]})
+    return pair_events
+
+
+def es_two_events(query, conditional_query, condition, time_limit=10, return_extra_filter=False):
+    if not time_limit:
+        time_limit = "1"
+    else:
+        time_limit = time_limit.strip("h")
+    # Forward search
+    main_events, conditional_events, extra_filter_scripts = forward_search(query, conditional_query,
+                                                                           condition, time_limit)
+    pair_events = add_pairs(
+        main_events, conditional_events, condition, time_limit)
+
+    # Backward search
+    conditional_events, main_events, _ = forward_search(
+        conditional_query, query, "before" if condition == "after" else "after", time_limit)
+    pair_events += add_pairs(main_events,
+                             conditional_events, condition, time_limit)
 
     print(len(pair_events))
     if return_extra_filter:
@@ -201,8 +220,12 @@ def es_two_events(query, conditional_query, condition, time_limit=10, return_ext
 def es_three_events(query, before, beforewhen, after, afterwhen):
     if not afterwhen:
         afterwhen = "1"
+    else:
+        afterwhen = afterwhen.strip('h')
     if not beforewhen:
         beforewhen = "1"
+    else:
+        beforewhen = afterwhen.strip('h')
     before_pairs, extra_filter_scripts = es_two_events(
         query, before, "before", beforewhen, return_extra_filter=True)
     after_events = individual_es(after, get_time_bound=True, group_time=2,
@@ -219,3 +242,10 @@ def es_three_events(query, before, beforewhen, after, afterwhen):
                                     "begin_time": before_pair["begin_time"],
                                     "end_time": before_pair["end_time"]})
     return pair_events
+
+
+if __name__ == "__main__":
+    query = "graveyard in norway oslo"
+    loc, keywords, description, weekday, months, timeofday, activity, region, must_not_terms = process_query(
+        query)
+    must_terms, should_terms = process_string(description, must_not_terms)

@@ -25,10 +25,12 @@ pattern = re.compile(f"\s?({'|'.join(all_words)}+)\s")
 grouped_info_dict = json.load(open(f"{COMMON_PATH}/grouped_info_dict.json"))
 locations = set([img["location"].lower()
                  for img in grouped_info_dict.values()])
-regions = set([w.strip() for img in grouped_info_dict.values()
+regions = set([w.strip().lower() for img in grouped_info_dict.values()
                for w in img["region"]])
-keywords = [w.replace('_', ' ') for img in grouped_info_dict.values()
-            for w in img["deeplab_concepts"] + img["concepts"]]
+keywords = set([w.replace('_', ' ') for img in grouped_info_dict.values()
+                for w in img["deeplab_concepts"] + img["concepts"] + img["attributes"] + img["category"]])
+
+# json.dump(list(keywords), open(f'{COMMON_PATH}/all_keywords.json', 'w'))
 all_address = '|'.join([re.escape(a) for a in locations])
 activities = set(["walking", "airplane", "transport"])
 
