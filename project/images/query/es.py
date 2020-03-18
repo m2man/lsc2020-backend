@@ -150,7 +150,7 @@ def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, 
     return group_results(post_request(json.dumps(json_query), "lsc2020"), group_factor)
 
 
-def forward_search(query, conditional_query, condition, time_limit, gps_bounds):
+def forward_search(query, conditional_query, condition, time_limit, gps_bounds=None):
     main_events = individual_es(
         query, gps_bounds, size=1000, group_factor="scene")
     extra_filter_scripts = []
