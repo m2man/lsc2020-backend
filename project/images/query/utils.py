@@ -8,10 +8,47 @@ import requests
 
 COMMON_PATH = os.getenv("COMMON_PATH")
 group_info = json.load(open(f"{COMMON_PATH}/group_info.json"))
-
+grouped_info_dict = json.load(open(f"{COMMON_PATH}/grouped_info_dict.json"))
+scene_info = json.load(open(f"{COMMON_PATH}/scene_info.json"))
 
 def distance(lt1, ln1, lt2, ln2):
     return (geopy.distance.distance([lt1, ln1], [lt2, ln2]).km)
+
+
+def not_noise(last_gps, current_gps):
+    """Assume 30secs"""
+    print(distance(last_gps["lat"], last_gps["lon"],
+                   current_gps["lat"], current_gps["lon"]))
+    return distance(last_gps["lat"], last_gps["lon"],
+                    current_gps["lat"], current_gps["lon"]) < 0.03
+
+
+def filter_sorted_gps(gps_points):
+    if gps_points:
+        points = [gps_points[0]]
+        for point in gps_points[1:]:
+            if not_noise(points[-1], point):
+                points.append(point)
+        print(len(gps_points), len(points))
+        return points
+    return []
+
+
+def get_gps(images):
+    if images:
+        if isinstance(images[0], str):
+            all_gps = [grouped_info_dict[image]["gps"] for image in images]
+
+            sorted_by_time = [gps for (gps, image) in sorted(
+                zip(all_gps, images), key=lambda x: x[1])]
+        elif isinstance(images[0], dict) and "gps" in images[0]:
+            all_gps = [image["gps"] for image in images]
+            sorted_by_time = [image["gps"] for image in sorted(
+                images, key=lambda x: x["image_path"])]
+        else:
+            raise NotImplementedError
+        return sorted_by_time
+    return None
 
 
 def post_request(json_query, index="lsc2019_combined_text_bow"):
@@ -45,11 +82,17 @@ def find_place_in_available_group(regrouped_results, new_group, time_limit=0.5):
     return "", begin_time, end_time
 
 
+def get_min_event(images, event_type="group"):
+    return np.argmin([int(image[event_type].split('_')[-1])
+                           for image in images])
+
+def get_max_event(images, event_type="group"):
+    return np.argmax([int(image[event_type].split('_')[-1])
+                           for image in images])
+
 def get_before_after(images):
-    min_group = np.argmin([int(image["group"].split('_')[-1])
-                           for image in images])
-    max_group = np.argmax([int(image["group"].split('_')[-1])
-                           for image in images])
+    min_group = get_min_event(images)
+    max_group = get_max_event(images)
     return images[min_group]["before"], images[max_group]["after"]
 
 
@@ -96,7 +139,8 @@ def group_results(results, get_time_bound=False, group_time=0, factor="group"):
             "before": images[0]["before"],
             "after": images[0]["after"],
             "begin_time": begin_time if get_time_bound else '',
-            "end_time": end_time if get_time_bound else ''})
+            "end_time": end_time if get_time_bound else '',
+            "gps": [get_gps(images[0]["before"]), get_gps(images), get_gps(images[0]["after"])]})
     return final_results
 
 

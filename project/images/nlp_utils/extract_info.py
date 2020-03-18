@@ -305,17 +305,3 @@ def process_query(sent):
     print(f"Location: {loc}, weekday: {weekday}, month: {month}, timeofday: {timeofday}, activity: {activity}, region: {region}, must-not: {must_not_terms}")
     print(f"Keywords:", keywords, "Rest:", info)
     return loc, keywords, " ".join(info), weekday, month, timeofday, list(set(activity)), list(set(region)), must_not_terms
-
-    info = extract_info_from_sentence_full_tag(sent)["present"]
-    print(info)
-    weekdays = [time for time in info["time"] if time in
-                ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]]
-    months = [time for time in info["time"] if time in
-              ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
-               "november", "december"]]
-
-    sent = ' '.join([w for w in sent.split() if w not in weekdays +
-                     months + must_not_terms + info['loc']])
-
-    return [w.strip() for place in info['loc'] for w in place.split(', ')], sent, weekdays, months, info[
-        'timeofday'], must_not_terms

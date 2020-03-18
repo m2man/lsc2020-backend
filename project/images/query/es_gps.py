@@ -1,4 +1,8 @@
 import json
+import os
+
+COMMON_PATH = os.getenv('COMMON_PATH')
+grouped_info_dict = json.load(open(f"{COMMON_PATH}/grouped_info_dict.json"))
 
 
 def get_query_request(bounds):
@@ -30,6 +34,10 @@ def get_query_request(bounds):
     }
 
 
+def get_gps(image):
+    return grouped_info_dict[image]["gps"]
+
+
 def gps_search(es, bounds, images, display_type):
     if display_type == 'normal':
         query_request = get_query_request(bounds)
@@ -42,9 +50,11 @@ def gps_search(es, bounds, images, display_type):
                     "image_path": image_paths
                 }
             }
-            query_request["query"]["bool"]["filter"] = [query_request["query"]["bool"]["filter"], image_filter]
+            query_request["query"]["bool"]["filter"] = [
+                query_request["query"]["bool"]["filter"], image_filter]
         query_request_json = json.dumps(query_request)
-        res = es.search(index="lsc2020", body=query_request_json, size=50)  # Show all result (9999 results if possible)
+        # Show all result (9999 results if possible)
+        res = es.search(index="lsc2020", body=query_request_json, size=50)
         id_result = [[r["_source"], r["_score"]] for r in res['hits']['hits']]
 
         return group_time(id_result)
@@ -57,7 +67,8 @@ def gps_search(es, bounds, images, display_type):
                     "id": [res["id"] for res in period[1][0]]
                 }
             }
-            query_request["query"]["bool"]["filter"] = [query_request["query"]["bool"]["filter"], image_filter]
+            query_request["query"]["bool"]["filter"] = [
+                query_request["query"]["bool"]["filter"], image_filter]
             query_request_json = json.dumps(query_request)
             res = es.search(index="lsc2019_combined_text_bow", body=query_request_json,
                             size=50)  # Show all result (9999 results if possible)

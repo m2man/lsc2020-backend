@@ -183,13 +183,15 @@ def add_pairs(main_events, conditional_events, condition, time_limit):
                                     "before": main_event["before"],
                                     "after": conditional_event["current"],
                                     "begin_time": main_event["begin_time"],
-                                    "end_time": main_event["end_time"]})
+                                    "end_time": main_event["end_time"],
+                                    "gps": main_event["gps"][:2] + [conditional_event["gps"][1]]})
             elif condition == "before" and timedelta() < main_event["begin_time"] - conditional_event["begin_time"] < timedelta(hours=float(time_limit) + 2):
                 pair_events.append({"current": main_event["current"],
                                     "before": conditional_event["current"],
                                     "after": main_event["after"],
                                     "begin_time": main_event["begin_time"],
-                                    "end_time": main_event["end_time"]})
+                                    "end_time": main_event["end_time"],
+                                    "gps": [conditional_event["gps"][1]] + main_event["gps"][1:]})
     return pair_events
 
 
@@ -240,7 +242,8 @@ def es_three_events(query, before, beforewhen, after, afterwhen):
                                     "before": before_pair["before"],
                                     "after": after_event["current"],
                                     "begin_time": before_pair["begin_time"],
-                                    "end_time": before_pair["end_time"]})
+                                    "end_time": before_pair["end_time"],
+                                    "gps": before_pair["gps"][:2] + [after_event["gps"][1]]})
     return pair_events
 
 

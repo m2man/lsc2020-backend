@@ -30,9 +30,10 @@ regions = set([w.strip().lower() for img in grouped_info_dict.values()
 keywords = set([w.replace('_', ' ') for img in grouped_info_dict.values()
                 for w in img["deeplab_concepts"] + img["concepts"] + img["attributes"] + img["category"]])
 
-# json.dump(list(keywords), open(f'{COMMON_PATH}/all_keywords.json', 'w'))
+json.dump(list(keywords), open(f'{COMMON_PATH}/all_keywords.json', 'w'))
 all_address = '|'.join([re.escape(a) for a in locations])
 activities = set(["walking", "airplane", "transport"])
+phrases = json.load(open(f'{COMMON_PATH}/phrases.json'))
 
 
 def find_regex(regex, text, escape=False):

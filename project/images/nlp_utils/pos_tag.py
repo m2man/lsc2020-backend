@@ -3,7 +3,7 @@ import re
 import nltk
 from nltk.tokenize import MWETokenizer
 
-from ..nlp_utils.common import keywords, regions, activities, keywords
+from ..nlp_utils.common import keywords, regions, activities, keywords, phrases
 from ..nlp_utils.info_objects import Location, Time, Action, Object
 from ..nlp_utils.time import TimeTagger
 
@@ -24,10 +24,7 @@ class Tagger:
             "QUANTITY": ["at least", "more than", "less than", "at most",
                          "not more than", "a number of"],
             "IN": ["in front of", "called"],
-            "NN": ["cafe sign", "traffic light", "fire hydrant", "stop sign", "parking meter",
-                   "baseball bat", "baseball glove", "cell phone", "teddy bear", "hair drier"
-                                                                                 "airport vehicles", "airport vehicle",
-                   "screen"] + [keywords] + ["alarm clock", "dish washer"],
+            "NN": [phrase.replace("_", " ") for phrase in list(phrases.keys())],
             "SPACE": ["living room", "fastfood restaurant", "restaurant kitchen", "restaurant",
                       "dining hall", "food court", "butchers shop", "restaurant patio",
                       "coffee shop", "room", "hotel room", "kitchen", "office",

@@ -2,7 +2,7 @@ import json
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from images.query import es
+from images.query import es, get_timeline
 
 
 def jsonize(response):
@@ -22,6 +22,15 @@ def images(request):
     # Calculations
     queryset = es(message['query'])
     response = {'results': queryset}
+    return jsonize(response)
+
+
+@csrf_exempt
+def timeline(request):
+    # Get message
+    message = json.loads(request.body.decode('utf-8'))
+    timeline = get_timeline(message['images'], message["timeline_type"])
+    response = {'timeline': timeline}
     return jsonize(response)
 
 
