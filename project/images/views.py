@@ -20,7 +20,7 @@ def images(request):
     # Get message
     message = json.loads(request.body.decode('utf-8'))
     # Calculations
-    queryset = es(message['query'])
+    queryset = es(message['query'], message["gps_bounds"])
     response = {'results': queryset}
     return jsonize(response)
 
@@ -34,14 +34,14 @@ def timeline(request):
     return jsonize(response)
 
 
-# @csrf_exempt
-# def gpssearch(request):
-#     # Get message
-#     message = json.loads(request.body.decode('utf-8'))
-#     # Calculations
-#     images = message["images"] if "images" in message else []
-#     display_type = message["display_type"]
-#     queryset = es_gps(es, message['query'], images, display_type)
-#     response = {'results': queryset,
-#                 'error': None}
-#     return jsonize(response)
+@csrf_exempt
+def gpssearch(request):
+    # Get message
+    message = json.loads(request.body.decode('utf-8'))
+    # Calculations
+    images = message["scenes"]
+    display_type = message["display_type"]
+    queryset = es_gps(es, message['query'], images, display_type)
+    response = {'results': queryset,
+                'error': None}
+    return jsonize(response)
