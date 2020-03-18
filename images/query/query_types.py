@@ -97,3 +97,12 @@ def create_bool_query(must_query, filter_query):
         return {"bool": {"must": must_query, "filter": filter_query}}
     else:
         return {"bool": {"must": must_query}}
+
+
+def get_gps_filter(bounds):
+    return {"geo_bounding_box": {
+                        "gps": {
+                            "top_left": {"lon": float(bounds[0]), "lat": float(bounds[3])},
+                            "bottom_right": {"lon": float(bounds[2]), "lat": float(bounds[1])}
+                        }
+                    }}

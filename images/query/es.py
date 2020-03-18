@@ -10,19 +10,20 @@ def query_all(includes, index):
     return post_request(json.dumps(request), index)
 
 
-def es(query):
-    print(query)
+def es(query, gps_bounds):
+    print(query, gps_bounds)
     if query["before"] and query["after"]:
-        return es_three_events(query["current"], query["before"], query["beforewhen"], query["after"], query["afterwhen"])
+        last_results = es_three_events(query["current"], query["before"], query["beforewhen"], query["after"], query["afterwhen"], gps_bounds)
     elif query["before"]:
-        return es_two_events(query["current"], query["before"], "before", query["beforewhen"])
+        last_results = es_two_events(query["current"], query["before"], "before", query["beforewhen"], gps_bounds)
     elif query["after"]:
-        return es_two_events(query["current"], query["after"], "after", query["afterwhen"])
+        last_results = es_two_events(query["current"], query["after"], "after", query["afterwhen"], gps_bounds)
     else:
-        return individual_es(query["current"], group_factor="scene")
+        last_results =individual_es(query["current"], gps_bounds, group_factor="scene")
+    return last_results
 
 
-def individual_es(query, get_time_bound=False, group_time=0.5, size=1000, extra_filter_scripts=None, group_factor="group"):
+def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, group_factor="group"):
     loc, keywords, description, weekday, months, timeofday, activity, region, must_not_terms = process_query(
         query)
     must_terms, should_terms = process_string(description, must_not_terms)
@@ -115,6 +116,9 @@ def individual_es(query, get_time_bound=False, group_time=0.5, size=1000, extra_
                 "source": script
             }}})
 
+    if gps_bounds:
+        filters.append(get_gps_filter(gps_bounds))
+
     more_should = []
     if activity:
         if "must" in json_query["query"]["bool"]:
@@ -142,13 +146,13 @@ def individual_es(query, get_time_bound=False, group_time=0.5, size=1000, extra_
                 "descriptions": must_not_terms
             }}
 
-    # print(json.dumps(json_query), "lsc2020")
-    return group_results(post_request(json.dumps(json_query), "lsc2020"), get_time_bound, group_time, group_factor)
+    print(json.dumps(json_query), "lsc2020")
+    return group_results(post_request(json.dumps(json_query), "lsc2020"), group_factor)
 
 
-def forward_search(query, conditional_query, condition, time_limit=10):
+def forward_search(query, conditional_query, condition, time_limit, gps_bounds=None):
     main_events = individual_es(
-        query, get_time_bound=True, size=1000, group_factor="scene")
+        query, gps_bounds, size=1000, group_factor="scene")
     extra_filter_scripts = []
 
     for time_group in find_time_span(main_events):
@@ -166,9 +170,7 @@ def forward_search(query, conditional_query, condition, time_limit=10):
             script = f" 0 < ChronoUnit.HOURS.between({time}, doc['time'].value) &&  ChronoUnit.HOURS.between({time}, doc['time'].value) < {float(time_limit)+ 2} "
         extra_filter_scripts.append(f"({script})")
     extra_filter_scripts = [f''"||".join(extra_filter_scripts)]
-    conditional_events = individual_es(conditional_query,
-                                       get_time_bound=True,
-                                       group_time=2, size=10000,
+    conditional_events = individual_es(conditional_query, size=10000,
                                        extra_filter_scripts=None)
 
     return main_events, conditional_events, extra_filter_scripts
@@ -195,14 +197,14 @@ def add_pairs(main_events, conditional_events, condition, time_limit):
     return pair_events
 
 
-def es_two_events(query, conditional_query, condition, time_limit=10, return_extra_filter=False):
+def es_two_events(query, conditional_query, condition, time_limit, gps_bounds, return_extra_filter=False):
     if not time_limit:
         time_limit = "1"
     else:
         time_limit = time_limit.strip("h")
     # Forward search
     main_events, conditional_events, extra_filter_scripts = forward_search(query, conditional_query,
-                                                                           condition, time_limit)
+                                                                           condition, time_limit, gps_bounds)
     pair_events = add_pairs(
         main_events, conditional_events, condition, time_limit)
 
@@ -219,7 +221,7 @@ def es_two_events(query, conditional_query, condition, time_limit=10, return_ext
         return pair_events
 
 
-def es_three_events(query, before, beforewhen, after, afterwhen):
+def es_three_events(query, before, beforewhen, after, afterwhen, gps_bounds):
     if not afterwhen:
         afterwhen = "1"
     else:
@@ -229,8 +231,8 @@ def es_three_events(query, before, beforewhen, after, afterwhen):
     else:
         beforewhen = afterwhen.strip('h')
     before_pairs, extra_filter_scripts = es_two_events(
-        query, before, "before", beforewhen, return_extra_filter=True)
-    after_events = individual_es(after, get_time_bound=True, group_time=2,
+        query, before, "before", beforewhen, gps_bounds, return_extra_filter=True)
+    after_events = individual_es(after,
                                  size=5000, extra_filter_scripts=extra_filter_scripts)
     print(len(before_pairs), len(after_events))
 

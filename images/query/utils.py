@@ -34,6 +34,7 @@ def filter_sorted_gps(gps_points):
     return []
 
 
+
 def get_gps(images):
     if images:
         if isinstance(images[0], str):
@@ -68,12 +69,12 @@ def post_request(json_query, index="lsc2019_combined_text_bow"):
     return id_images
 
 
-def find_place_in_available_group(regrouped_results, new_group, time_limit=0.5):
+def find_place_in_available_group(regrouped_results, new_group, group_time=2):
     begin_time, end_time = get_time_of_group([res[0] for res in new_group])
     if regrouped_results:
         for regroup in regrouped_results:
-            if abs(begin_time - regrouped_results[regroup]["begin_time"]) < timedelta(hours=time_limit) and \
-                    abs(end_time - regrouped_results[regroup]["end_time"]) < timedelta(hours=time_limit):
+            if abs(begin_time - regrouped_results[regroup]["begin_time"]) < timedelta(hours=group_time) and \
+                    abs(end_time - regrouped_results[regroup]["end_time"]) < timedelta(hours=group_time):
                 begin_time = min(
                     begin_time, regrouped_results[regroup]["begin_time"])
                 end_time = max(
@@ -96,7 +97,7 @@ def get_before_after(images):
     return images[min_group]["before"], images[max_group]["after"]
 
 
-def group_results(results, get_time_bound=False, group_time=0, factor="group"):
+def group_results(results, factor="group"):
     grouped_results = defaultdict(lambda: [])
     for result in results:
         group = result[0][factor]
@@ -108,7 +109,7 @@ def group_results(results, get_time_bound=False, group_time=0, factor="group"):
     for group in grouped_results:
         new_group = grouped_results[group]
         regroup, begin_time, end_time = find_place_in_available_group(
-            regrouped_results, new_group, group_time)
+            regrouped_results, new_group)
         if regroup and factor == "group":
             regrouped_results[regroup]["raw_results"].extend(new_group)
             regrouped_results[regroup]["begin_time"] = begin_time
@@ -138,8 +139,8 @@ def group_results(results, get_time_bound=False, group_time=0, factor="group"):
             "current": [image["image_path"] for image in images],
             "before": images[0]["before"],
             "after": images[0]["after"],
-            "begin_time": begin_time if get_time_bound else '',
-            "end_time": end_time if get_time_bound else '',
+            "begin_time": begin_time,
+            "end_time": end_time,
             "gps": [get_gps(images[0]["before"]), get_gps(images), get_gps(images[0]["after"])]})
     return final_results
 
@@ -152,11 +153,11 @@ def get_time_of_group(images):
     return begin_time, end_time
 
 
-def find_place_in_available_times(grouped_times, begin_time, end_time, time_limit=2):
+def find_place_in_available_times(grouped_times, begin_time, end_time, group_time=2):
     if grouped_times:
         for time in grouped_times:
-            if abs(begin_time - grouped_times[time]["begin_time"]) < timedelta(hours=time_limit) and \
-                    abs(end_time - grouped_times[time]["end_time"]) < timedelta(hours=time_limit):
+            if abs(begin_time - grouped_times[time]["begin_time"]) < timedelta(hours=group_time) and \
+                    abs(end_time - grouped_times[time]["end_time"]) < timedelta(hours=group_time):
                 begin_time = min(
                     begin_time, grouped_times[time]["begin_time"])
                 end_time = max(
