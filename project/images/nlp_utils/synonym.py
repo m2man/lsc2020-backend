@@ -11,10 +11,6 @@ from nltk.corpus import wordnet as wn
 from nltk.tag import pos_tag
 from ..nlp_utils.extract_info import init_tagger
 from nltk.tokenize import word_tokenize
-try:
-    from pattern.en import lemma, singularize
-except:
-    from pattern3.en import lemma, singularize
 
 specials = {"cloudy": "cloud"}
 
