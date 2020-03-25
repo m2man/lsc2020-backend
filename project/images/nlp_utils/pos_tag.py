@@ -37,8 +37,7 @@ class Tagger:
             "POSITION_PREP": ["near", "distance to"],
 
         }
-        for tag in ["QUANTITY", "IN", "NN", "SPACE", "POSITION", "LOCATION",
-                    "TOBE", "WAS", "TIMEPREP", "POSITION_PREP"]:
+        for tag in self.specials:
             for keyword in self.specials[tag]:
                 if ' ' in keyword:
                     self.tokenizer.add_mwe(keyword.split())

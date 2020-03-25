@@ -28,57 +28,60 @@ def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, 
         query)
     must_terms, should_terms = process_string(description, must_not_terms)
     must_terms.extend(keywords)
-    should_query = {"terms_set": {
-        "descriptions": {
-                    "terms": should_terms,
-                    "minimum_should_match_script": {
-                        "source": f"{min(3, len(should_terms) - 1 if should_terms else 0)}"
-                    }
-                    }
-    }}
-    must_query = {"terms_set": {
-        "descriptions": {
-            "terms": must_terms,
-            "minimum_should_match_script": {
-                "source": f"{min(3, max(1, len(must_terms) - 1))}"
-            }
-        }
-    }}
-    if not must_terms and not should_terms:
-        main_query = {"bool": {}}
-    elif must_terms and should_terms:
-        main_query = {"bool": {"must": must_query,
-                               "should": should_query
-                               }}
-    elif must_terms:
-        main_query = {"bool": {"must": must_query}}
-    else:
-        main_query = {"bool": {"should": should_query}}
+    must_terms = list(set(must_terms))
+    # Test
+    # If not working delete these 2 lines
+    should_terms.extend(must_terms)
+    should_terms = list(set(should_terms))
+    must_terms, should_terms = should_terms, must_terms
+    # ===================================
+    must_queries = []
+    should_queries = []
+    filter_queries = []
+    must_not_queries = []
 
-    json_query = {
-        "size": size,
-        "_source": {
-            "includes": [
-                "image_path",
-                "descriptions",
-                "activity",
-                "location",
-                "weekday",
-                "time",
-                "gps",
-                "scene",
-                "group",
-                "before",
-                "after"
-            ]
-        },
-        "query": main_query
-    }
-    filters = []
-    if weekday:
-        filters.append({"terms": {"weekday": weekday}})
+    # MUST
+    if must_terms:
+        must_queries.append({"terms_set": {
+                                "descriptions": {
+                                    "terms": must_terms,
+                                    "minimum_should_match_script": {
+                                        "source": "1"
+                                    }
+                                }
+                            }})
+
     if region:
-        filters.append({"terms": {"region": region}})
+        must_queries.append({"terms_set": {"region": {"terms": region,
+                                                 "minimum_should_match_script": {
+                                                        "source": "1"}}}})
+
+
+
+    if loc:
+        must_queries.append({"match": {"location": {"query": ' '.join(loc)}}})
+
+    # SHOULDS
+    if should_terms:
+        should_queries.append({"terms_set": {
+                            "descriptions": {
+                                        "terms": should_terms,
+                                        "minimum_should_match_script": {
+                                            "source": "1"
+                                        }
+                                        }
+                        }})
+
+    if activity:
+        for act in activity:
+            if act == "walking":
+                should_queries.append({"terms": {"activity": activity}})
+            else:
+                must_queries.append({"terms": {"activity": activity}})
+
+    # FILTERS
+    if weekday:
+        filter_queries.append({"terms": {"weekday": weekday}})
 
     script = extra_filter_scripts if extra_filter_scripts else []
     if timeofday:
@@ -111,40 +114,53 @@ def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, 
 
     if script:
         script = "&&".join(script)
-        filters.append({"script": {
+        filter_queries.append({"script": {
             "script": {
                 "source": script
             }}})
 
     if gps_bounds:
-        filters.append(get_gps_filter(gps_bounds))
+        filter_queries.append(get_gps_filter(gps_bounds))
 
-    more_should = []
-    if activity:
-        if "must" in json_query["query"]["bool"]:
-            more_should.append({"terms": {"activity": activity}})
-        else:
-            json_query["query"]["bool"]["must"] = {
-                "terms": {"activity": activity}}
-
-    if filters:
-        json_query["query"]["bool"]["filter"] = filters
-
-    if loc:
-        more_should.append({"match": {"location": {"query": ' '.join(loc)}}})
-
-    if more_should:
-        if "should" in json_query["query"]["bool"]:
-            json_query["query"]["bool"]["should"] = [
-                json_query["query"]["bool"]["should"]] + more_should
-        else:
-            json_query["query"]["bool"]["should"] = more_should
-
+    # MUST NOT
     if must_not_terms:
-        json_query["query"]["bool"]["must_not"] = {
+        must_not_queries.append({
             "terms": {
-                "descriptions": must_not_terms
-            }}
+                "descriptions": must_not_terms}
+            })
+
+    # CONSTRUCT JSON
+    main_query = {}
+    if must_queries:
+        main_query["must"] = must_queries[0] if len(must_queries) == 1 else must_queries
+    else:
+        main_query["must"] = {"match_all": {}}
+    if should_queries:
+        main_query["should"] = should_queries[0] if len(should_queries) == 1 else should_queries
+    if filter_queries:
+        main_query["filter"] = filter_queries[0] if len(filter_queries) == 1 else filter_queries
+    if must_not_queries:
+        main_query["must_not"] = must_not_queries[0] if len(must_not_queries) == 1 else must_not_queries
+
+    json_query = {
+        "size": size,
+        "_source": {
+            "includes": [
+                "image_path",
+                "descriptions",
+                "activity",
+                "location",
+                "weekday",
+                "time",
+                "gps",
+                "scene",
+                "group",
+                "before",
+                "after"
+            ]
+        },
+        "query": {"bool": main_query}
+    }
 
     print(json.dumps(json_query), "lsc2020")
     return group_results(post_request(json.dumps(json_query), "lsc2020"), group_factor)

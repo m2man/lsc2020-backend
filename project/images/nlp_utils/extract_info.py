@@ -304,4 +304,4 @@ def process_query(sent):
             info.append(word)
     print(f"Location: {loc}, weekday: {weekday}, month: {month}, timeofday: {timeofday}, activity: {activity}, region: {region}, must-not: {must_not_terms}")
     print(f"Keywords:", keywords, "Rest:", info)
-    return loc, keywords, " ".join(info), weekday, month, timeofday, list(set(activity)), list(set(region)), must_not_terms
+    return loc, keywords, " ".join(info + keywords), weekday, month, timeofday, list(set(activity)), list(set(region)), must_not_terms

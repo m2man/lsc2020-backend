@@ -75,6 +75,7 @@ def timeit(method):
 
 
 def get_most_similar(model, word, vocabulary):
+    word = word.replace(' ', '_')
     if word in model.wv.vocab:
         vocabulary = [w for w in vocabulary if w in model.wv.vocab]
         if vocabulary:
@@ -231,21 +232,21 @@ def get_all_similar(words, must_not_terms):
                 for w in similars:
                     shoulds[w].append(0.8)
 
-            for w, dist in get_most_similar(model, word, vocabulary)[:20]:
-                shoulds[w].append(1-dist)
-                # if dist < 0.2:
-                # musts.add(w)
-                # elif dist < 0.5:
-                # shoulds.add(w)
-                # print(w.ljust(20), round(dist, 2))
+        for w, dist in get_most_similar(model, word, vocabulary)[:20]:
+            shoulds[w].append(1-dist)
+            # if dist < 0.2:
+            # musts.add(w)
+            # elif dist < 0.5:
+            # shoulds.add(w)
+            # print(w.ljust(20), round(dist, 2))
 
     final_shoulds = []
     for w, dist in shoulds.items():
         if w not in must_not_terms:
             mean_dist = sum(dist) / len(dist)
-            if mean_dist > 0.75:
+            if mean_dist > 0.8:
                 musts.add(w)
-            if mean_dist > 0.5:
+            if mean_dist > 0.6:
                 final_shoulds.append(w)
 
     musts = musts.difference(must_not_terms)
