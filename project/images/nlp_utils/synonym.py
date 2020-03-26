@@ -176,8 +176,11 @@ class Keyword:
                 self.keyword = word
             depth = 0 if self.keyword in [
                 "animal", "person", "food", "color"] else 3
-            syns = synsets[self.keyword.replace("_", " ")].split(', ')[
-                0].split()
+            if self.keyword.replace("_", " ") in synsets:
+                syns = synsets[self.keyword.replace("_", " ")].split(', ')[
+                    0].split()
+            else:
+                syns = [syn.name() for syn in wn.synsets(self.keyword)]
             if syns and syns != ["None"]:
                 self.words = inspect(syns, depth)
 
@@ -244,8 +247,8 @@ def get_all_similar(words, must_not_terms):
     for w, dist in shoulds.items():
         if w not in must_not_terms:
             mean_dist = sum(dist) / len(dist)
-            if mean_dist > 0.8:
-                musts.add(w)
+            # if mean_dist > 0.8:
+                # musts.add(w)
             if mean_dist > 0.6:
                 final_shoulds.append(w)
 

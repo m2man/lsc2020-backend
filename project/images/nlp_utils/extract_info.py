@@ -277,8 +277,8 @@ def process_query(sent):
     for word, tag in tags:
         if word == "airport":
             activity.append("airplane")
-        if word == "candle":
-            keywords.append("lamp")
+        # if word == "candle":
+            # keywords.append("lamp")
         if tag == 'TIMEOFDAY':
             timeofday.append(word)
         elif tag == "WEEKDAY":
@@ -296,7 +296,7 @@ def process_query(sent):
                 activity.append(word)
         elif tag == "REGION":
             region.append(word)
-        elif tag == "KEYWORDS":
+        elif tag in ["MICROSOFT"]:
             keywords.append(word)
         elif tag in ['NN', 'SPACE', "VBG", "NNS"]:
             if word in ["office", "meeting"]:

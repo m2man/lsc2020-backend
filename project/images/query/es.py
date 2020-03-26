@@ -42,14 +42,9 @@ def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, 
 
     # MUST
     if must_terms:
-        must_queries.append({"terms_set": {
-                                "descriptions": {
-                                    "terms": must_terms,
-                                    "minimum_should_match_script": {
-                                        "source": "1"
-                                    }
-                                }
-                            }})
+        must_queries.append({"terms": {
+                                "descriptions":  must_terms
+                                   }})
 
     if region:
         must_queries.append({"terms_set": {"region": {"terms": region,
@@ -64,7 +59,7 @@ def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, 
     # SHOULDS
     if should_terms:
         should_queries.append({"terms_set": {
-                            "descriptions": {
+                            "microsoft": {
                                         "terms": should_terms,
                                         "minimum_should_match_script": {
                                             "source": "1"
