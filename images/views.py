@@ -20,7 +20,7 @@ def images(request):
     # Get message
     message = json.loads(request.body.decode('utf-8'))
     # Calculations
-    queryset = es(message['query'])
+    queryset = es(message['query'], message["gps_bounds"])
     response = {'results': queryset}
     return jsonize(response)
 

@@ -19,3 +19,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+'''
+curl localhost:8000/api/image/ --header "Content-Type: application/json" -d  "{\"query\": { \"current\": \"laptop\", \"before\": null, \"after\": null},\"gps_bounds\": null}"
+'''
