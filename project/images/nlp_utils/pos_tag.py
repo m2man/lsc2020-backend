@@ -19,12 +19,7 @@ class Tagger:
         self.specials = {
             "ACTIVITY": activities.union(["driving", "flight"]),
             "REGION": regions,
-            "MICROSOFT": microsoft,
-            "COCO": coco,
-            "ATTRIBUTES": attributes,
-            "CATEGORY": category,
-            "DEEPLAB": deeplab,
-            # "KEYWORDS": keywords,
+            "KEYWORDS": all_keywords,
             "LOCATION": locations,
             "QUANTITY": ["at least", "more than", "less than", "at most",
                          "not more than", "a number of"],

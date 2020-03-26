@@ -11,14 +11,13 @@ from nltk.corpus import wordnet as wn
 from nltk.tag import pos_tag
 from ..nlp_utils.extract_info import init_tagger
 from nltk.tokenize import word_tokenize
+from ..nlp_utils.common import *
 
 specials = {"cloudy": "cloud"}
-
 
 COMMON_PATH = os.getenv("COMMON_PATH")
 LSC_PATH = os.getenv("LSC_PATH")
 
-vocabulary = json.load(open(f'{COMMON_PATH}/all_keywords.json'))
 model = Word2Vec.load(f"{COMMON_PATH}/word2vec.model")
 map2deeplab = json.load(open(f"{COMMON_PATH}/map2deeplab.json"))
 deeplab2simple = json.load(open(f"{COMMON_PATH}/deeplab2simple.json"))
@@ -205,7 +204,7 @@ class Keyword:
             return False, 10
 
 
-KEYWORDS = [Keyword(kw) for kw in vocabulary]
+KEYWORDS = [Keyword(kw) for kw in all_keywords]
 
 
 def to_deeplab(word):
@@ -214,13 +213,13 @@ def to_deeplab(word):
             yield deeplab2simple[kw]
 
 
-def get_all_similar(words, must_not_terms):
-    shoulds = defaultdict(lambda: [])
+def get_all_similar(words, keywords, must_not_terms):
+    expansion = defaultdict(lambda: [])
     musts = set()
     for word in words:
         word = word.replace('_', ' ')
         possible_words = []
-        if word in vocabulary:
+        if word in all_keywords:
             possible_words = [word]
         else:
             for w in to_deeplab(word):
@@ -233,30 +232,34 @@ def get_all_similar(words, must_not_terms):
                 if word in similars:
                     musts.add(word)
                 for w in similars:
-                    shoulds[w].append(0.8)
+                    expansion[w].append(0.8)
 
-        for w, dist in get_most_similar(model, word, vocabulary)[:20]:
-            shoulds[w].append(1-dist)
+        for w, dist in get_most_similar(model, word, all_keywords)[:20]:
+            expansion[w].append(1-dist)
             # if dist < 0.2:
             # musts.add(w)
             # elif dist < 0.5:
             # shoulds.add(w)
             # print(w.ljust(20), round(dist, 2))
+    print(keywords)
+    for keyword in keywords["descriptions"]:
+        for w, dist in get_most_similar(model, keyword, all_keywords)[:20]:
+            expansion[w].append(1-dist)
+            print(w.ljust(20), round(dist, 2))
 
-    final_shoulds = []
-    for w, dist in shoulds.items():
+    final_expansions = []
+    for w, dist in expansion.items():
         if w not in must_not_terms:
             mean_dist = sum(dist) / len(dist)
-            # if mean_dist > 0.8:
-                # musts.add(w)
-            if mean_dist > 0.6:
-                final_shoulds.append(w)
+            if mean_dist > 0.8:
+                musts.add(w)
+            if mean_dist > 0.5:
+                final_expansions.append(w)
 
     musts = musts.difference(must_not_terms)
     musts = musts.difference(["airplane", "plane"])
-
-    print(musts, final_shoulds)
-    return list(musts), final_shoulds
+    print("Must and should: ", musts, final_expansions)
+    return list(musts), final_expansions
 
 
 categories = ["animal", "object", "location", "plant", "person", "food", "room", 'device',
@@ -280,9 +283,8 @@ def check_category(word):
     return set(categories).intersection(results.keys())
 
 
-def process_string(string, must_not_terms):
-    tokens = init_tagger.tokenizer.tokenize(word_tokenize(string.lower()))
-    pos = pos_tag(tokens)
+def process_string(info, keywords, must_not_terms):
+    pos = pos_tag(info)
     s = []
     print(pos)
     for w, t in pos:
@@ -304,7 +306,7 @@ def process_string(string, must_not_terms):
         return category and 'color' not in category
 
     s = [w for w in s if to_take(w)]
-    return get_all_similar(s, must_not_terms)
+    return get_all_similar(s, keywords, must_not_terms)
 
 
 if __name__ == "__main__":

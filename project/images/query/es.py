@@ -24,48 +24,60 @@ def es(query, gps_bounds):
 
 
 def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, group_factor="group"):
-    loc, keywords, description, weekday, months, timeofday, activity, region, must_not_terms = process_query(
+    loc, keywords, info, weekday, months, timeofday, activity, region, must_not_terms = process_query(
         query)
-    must_terms, should_terms = process_string(description, must_not_terms)
-    must_terms.extend(keywords)
-    must_terms = list(set(must_terms))
-    # Test
-    # If not working delete these 2 lines
-    should_terms.extend(must_terms)
-    should_terms = list(set(should_terms))
-    must_terms, should_terms = should_terms, must_terms
-    # ===================================
+    must_terms, expansion = process_string(info, keywords, must_not_terms)
+
+    expansion.extend(must_terms)
+    expansion.extend(keywords["descriptions"])
+    expansion = list(set(expansion))
+
     must_queries = []
     should_queries = []
     filter_queries = []
     must_not_queries = []
 
     # MUST
-    if must_terms:
+    if expansion:
         must_queries.append({"terms": {
-                                "descriptions":  must_terms
-                                   }})
+                                    "descriptions_and_mc":  expansion }})
 
     if region:
         must_queries.append({"terms_set": {"region": {"terms": region,
                                                  "minimum_should_match_script": {
                                                         "source": "1"}}}})
 
-
-
     if loc:
         must_queries.append({"match": {"location": {"query": ' '.join(loc)}}})
 
     # SHOULDS
-    if should_terms:
+    if keywords["microsoft"]:
         should_queries.append({"terms_set": {
-                            "microsoft": {
-                                        "terms": should_terms,
-                                        "minimum_should_match_script": {
-                                            "source": "1"
-                                        }
-                                        }
-                        }})
+                                    "microsoft": {
+                                                "terms": keywords["microsoft"],
+                                                "minimum_should_match_script": {
+                                                    "source": "1"
+                                                }
+                                                }
+                                }})
+    if keywords["descriptions"]:
+        should_queries.append({"terms_set": {
+                                    "descriptions": {
+                                                "terms": keywords["descriptions"],
+                                                "minimum_should_match_script": {
+                                                    "source": "1"
+                                                }
+                                                }
+                                }})
+    if must_terms:
+        should_queries.append({"terms_set": {
+                                    "descriptions_and_mc": {
+                                                "terms": must_terms,
+                                                "minimum_should_match_script": {
+                                                    "source": "1"
+                                                }
+                                                }
+                                }})
 
     if activity:
         for act in activity:
