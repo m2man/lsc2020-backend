@@ -97,7 +97,8 @@ def get_before_after(images):
     return images[min_group]["before"], images[max_group]["after"]
 
 
-def group_results(results, factor="group"):
+def group_results(results, factor="group", sort_by_time=False):
+    print(f"Ungrouped: ", len(results))
     grouped_results = defaultdict(lambda: [])
     for result in results:
         group = result[0][factor]
@@ -123,14 +124,14 @@ def group_results(results, factor="group"):
     sorted_groups = []
     for group in regrouped_results:
         sorted_with_scores = sorted(
-            regrouped_results[group]["raw_results"], key=lambda x: x[1], reverse=True)
+            regrouped_results[group]["raw_results"], key=lambda x: (-x[1] if x[1] else 0, x[0]["time"]), reverse=False)
         score = sorted_with_scores[0][1]
         sorted_groups.append((score,
                               [res[0] for res in sorted_with_scores],
                               regrouped_results[group]["begin_time"],
                               regrouped_results[group]["end_time"]))
 
-    sorted_groups = sorted(sorted_groups, key=lambda x: x[0], reverse=True)
+    sorted_groups = sorted(sorted_groups, key=lambda x: (-x[0] if x[0] else 0, x[2]), reverse=False)
 
     final_results = []
 
@@ -142,6 +143,7 @@ def group_results(results, factor="group"):
             "begin_time": begin_time,
             "end_time": end_time,
             "gps": [get_gps(images[0]["before"]), get_gps(images), get_gps(images[0]["after"])]})
+    print(f"Grouped in to {len(final_results)} groups.")
     return final_results
 
 

@@ -39,7 +39,6 @@ def get_gps(image):
 
 #def get_filter
 
-
 def gps_search(es, bounds, images, display_type):
     if display_type == 'normal':
         query_request = get_query_request(bounds)
