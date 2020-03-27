@@ -225,6 +225,10 @@ def get_all_similar(words, keywords, must_not_terms):
             for w in to_deeplab(word):
                 possible_words.append(w)
         if possible_words:
+            for w in possible_words:
+                if w in microsoft:
+                    keywords["microsoft"].append(w)
+                keywords["descriptions"].append(w)
             musts.update(possible_words)
         else:
             similars = get_similar(word)
@@ -248,6 +252,7 @@ def get_all_similar(words, keywords, must_not_terms):
             print(w.ljust(20), round(dist, 2))
 
     final_expansions = []
+    score = {}
     for w, dist in expansion.items():
         if w not in must_not_terms:
             mean_dist = sum(dist) / len(dist)
@@ -255,11 +260,13 @@ def get_all_similar(words, keywords, must_not_terms):
                 musts.add(w)
             if mean_dist > 0.5:
                 final_expansions.append(w)
+            score[w] = mean_dist
+
 
     musts = musts.difference(must_not_terms)
     musts = musts.difference(["airplane", "plane"])
     print("Must and should: ", musts, final_expansions)
-    return list(musts), final_expansions
+    return list(musts), final_expansions, score
 
 
 categories = ["animal", "object", "location", "plant", "person", "food", "room", 'device',

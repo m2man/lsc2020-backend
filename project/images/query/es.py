@@ -5,10 +5,22 @@ from ..nlp_utils.synonym import process_string
 from datetime import timedelta, datetime
 
 
-def query_all(includes, index):
-    request = create_base_query(100, includes, {"match_all": {}})
-    return post_request(json.dumps(request), index)
-
+def query_all(includes, index, group_factor):
+    request = {
+        "size": 1000,
+        "_source": {
+            "includes": includes
+        },
+        "query": {
+            "match_all": {}
+        },
+        "sort": [
+            {"time": {
+                "order": "asc"
+            }}
+        ]
+    }
+    return group_results(post_request(json.dumps(request), index), group_factor)
 
 def es(query, gps_bounds):
     print(query, gps_bounds)
@@ -19,14 +31,31 @@ def es(query, gps_bounds):
     elif query["after"]:
         last_results = es_two_events(query["current"], query["after"], "after", query["afterwhen"], gps_bounds)
     else:
-        last_results =individual_es(query["current"], gps_bounds, group_factor="scene")
+        last_results = individual_es(query["current"], gps_bounds, group_factor="scene")
     return last_results
 
 
 def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, group_factor="group"):
+    includes = ["image_path",
+                "descriptions",
+                "activity",
+                "location",
+                "weekday",
+                "time",
+                "gps",
+                "scene",
+                "group",
+                "before",
+                "after"]
+    if not query:
+        return query_all(includes, "lsc2020", group_factor)
+
     loc, keywords, info, weekday, months, timeofday, activity, region, must_not_terms = process_query(
         query)
-    must_terms, expansion = process_string(info, keywords, must_not_terms)
+    must_terms, expansion, score = process_string(info, keywords, must_not_terms)
+
+    if not (loc or keywords or info or weekday or months or timeofday or activity or region or must_not_terms):
+        return query_all(includes, "lsc2020", group_factor)
 
     expansion.extend(must_terms)
     expansion.extend(keywords["descriptions"])
@@ -69,15 +98,15 @@ def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, 
                                                 }
                                                 }
                                 }})
-    if must_terms:
-        should_queries.append({"terms_set": {
-                                    "descriptions_and_mc": {
-                                                "terms": must_terms,
-                                                "minimum_should_match_script": {
-                                                    "source": "1"
-                                                }
-                                                }
-                                }})
+    # if must_terms:
+    #     should_queries.append({"terms_set": {
+    #                                 "descriptions_and_mc": {
+    #                                             "terms": must_terms,
+    #                                             "minimum_should_match_script": {
+    #                                                 "source": "1"
+    #                                             }
+    #                                             }
+    #                             }})
 
     if activity:
         for act in activity:
@@ -138,6 +167,8 @@ def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, 
 
     # CONSTRUCT JSON
     main_query = {}
+    test = True
+
     if must_queries:
         main_query["must"] = must_queries[0] if len(must_queries) == 1 else must_queries
     else:
@@ -148,25 +179,32 @@ def individual_es(query, gps_bounds=None, size=1000, extra_filter_scripts=None, 
         main_query["filter"] = filter_queries[0] if len(filter_queries) == 1 else filter_queries
     if must_not_queries:
         main_query["must_not"] = must_not_queries[0] if len(must_not_queries) == 1 else must_not_queries
+    main_query = {"bool": main_query}
 
+    # TEST
+    if test:
+        functions = []
+        for word in expansion:
+            functions.append({"filter": {"terms": {"descriptions_and_mc": [word]}}, "weight": score[word]})
+        for word in must_terms:
+            functions.append({"filter": {"terms": {"descriptions_and_mc": [word]}}, "weight": 3 * score[word]})
+
+        main_query = {"function_score": {
+                                    "query": main_query,
+                                    "boost": 5,
+                                    "functions": functions,
+                                    "score_mode": "sum",
+                                    "boost_mode": "sum"
+                                }}
+    # END TEST
+
+    # =============
     json_query = {
         "size": size,
         "_source": {
-            "includes": [
-                "image_path",
-                "descriptions",
-                "activity",
-                "location",
-                "weekday",
-                "time",
-                "gps",
-                "scene",
-                "group",
-                "before",
-                "after"
-            ]
+            "includes": includes
         },
-        "query": {"bool": main_query}
+        "query": main_query
     }
 
     print(json.dumps(json_query), "lsc2020")
