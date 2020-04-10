@@ -37,8 +37,7 @@ def get_query_request(bounds):
 def get_gps(image):
     return grouped_info_dict[image]["gps"]
 
-def get_filter
-
+#def get_filter
 
 def gps_search(es, bounds, images, display_type):
     if display_type == 'normal':

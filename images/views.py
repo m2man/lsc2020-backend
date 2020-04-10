@@ -2,7 +2,7 @@ import json
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from images.query import es, get_timeline
+from images.query import es, es_gps, get_timeline
 
 
 def jsonize(response):
@@ -20,7 +20,7 @@ def images(request):
     # Get message
     message = json.loads(request.body.decode('utf-8'))
     # Calculations
-    queryset = es(message['query'])
+    queryset = es(message['query'], message["gps_bounds"])[:100]
     response = {'results': queryset}
     return jsonize(response)
 

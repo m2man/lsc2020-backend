@@ -277,8 +277,8 @@ def process_query(sent):
     for word, tag in tags:
         if word == "airport":
             activity.append("airplane")
-        if word == "candle":
-            keywords.append("lamp")
+        # if word == "candle":
+            # keywords.append("lamp")
         if tag == 'TIMEOFDAY':
             timeofday.append(word)
         elif tag == "WEEKDAY":
@@ -294,6 +294,7 @@ def process_query(sent):
                 activity.append("airplane")
             else:
                 activity.append(word)
+            keywords.append(word)
         elif tag == "REGION":
             region.append(word)
         elif tag == "KEYWORDS":
@@ -304,4 +305,12 @@ def process_query(sent):
             info.append(word)
     print(f"Location: {loc}, weekday: {weekday}, month: {month}, timeofday: {timeofday}, activity: {activity}, region: {region}, must-not: {must_not_terms}")
     print(f"Keywords:", keywords, "Rest:", info)
-    return loc, keywords, " ".join(info), weekday, month, timeofday, list(set(activity)), list(set(region)), must_not_terms
+
+    split_keywords = {"descriptions": keywords, "concepts": [], "microsoft" : []}
+    for keyword in keywords:
+        if keyword in microsoft:
+            split_keywords["microsoft"].append(keyword)
+        if keyword in coco:
+            split_keywords["concepts"].append(coco)
+
+    return loc, split_keywords, info, weekday, month, timeofday, list(set(activity)), list(set(region)), must_not_terms
